@@ -55,6 +55,8 @@ cameras remain fully supported when source-matched framing is not required.
 
 ## Generate body mesh assets
 
+[![Body mesh generator example](https://img.youtube.com/vi/XR2QLn5UtyI/maxresdefault.jpg)](https://www.youtube.com/watch?v=XR2QLn5UtyI)
+
 Download the notarized arm64 generator app from the
 [Body Mesh Provider 1.0 release](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/CMResearchKit-Example-1.0-arm64.dmg).
 Use it to generate a body-mesh asset folder, then select that folder from the
