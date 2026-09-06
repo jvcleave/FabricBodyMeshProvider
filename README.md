@@ -54,10 +54,11 @@ cameras remain fully supported when source-matched framing is not required.
 
 ## Generate body mesh assets
 
-Download the generator app from the
-[CMResearchApp 0.1 release](https://github.com/jvcleave/CMResearchApp/releases/tag/0.1).
+Download the notarized arm64 generator app from the
+[Body Mesh Provider 1.0 release](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/CMResearchKit-Example-1.0-arm64.dmg).
 Use it to generate a body-mesh asset folder, then select that folder from the
-Body Mesh Provider node's Settings panel in Fabric.
+Body Mesh Provider node's Settings panel in Fabric. The app requires macOS 15
+or later on Apple silicon.
 
 ## Development layout
 
