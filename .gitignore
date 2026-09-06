@@ -1,0 +1,7 @@
+.DS_Store
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.build/
+SampleData/*
+!SampleData/README.md
