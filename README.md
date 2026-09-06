@@ -55,6 +55,8 @@ registry starts.
 
 ## Use in Fabric
 
+### Included sample
+
 Open [`FabricScenes/Sample.fabric`](FabricScenes/Sample.fabric) for a basic
 working scene. The scene's sample asset is included at
 [`FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A`](FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A),
@@ -65,6 +67,20 @@ repository, re-link it once:
 2. Open its Settings and choose **Choose Asset Folder**.
 3. Select the included `FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A`
    folder—not its individual `frames.bin` file.
+
+### Four-body camera sample
+
+For a more representative intrinsic-camera example, download and expand
+[`C00F9E45-6C83-4760-A700-BBF2A37D0380.zip`](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/C00F9E45-6C83-4760-A700-BBF2A37D0380.zip),
+then open [`FabricScenes/Camera-sample.fabric`](FabricScenes/Camera-sample.fabric).
+Select its **Body Mesh Provider** node and re-link the asset folder to the
+expanded `C00F9E45-6C83-4760-A700-BBF2A37D0380` directory.
+
+The scene connects **Source Size** to **Body Mesh Intrinsic Camera** and sets
+**Maximum Bodies** to `4`, allowing all four performers in the sample to be
+included when their confidence passes the node's threshold.
+
+### Build a scene manually
 
 To build a scene manually:
 
