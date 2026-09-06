@@ -10,6 +10,9 @@ public final class BodyMeshProviderPlugin: NSObject, FabricPlugin
 
     public static func additionalNodeClasses() -> [Node.Type]
     {
-        [BodyMeshProviderNode.self]
+        [
+            BodyMeshProviderNode.self,
+            BodyMeshIntrinsicCameraNode.self,
+        ]
     }
 }

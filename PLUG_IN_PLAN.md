@@ -7,7 +7,7 @@ time-varying Satin geometry that can be connected to Fabric's existing Mesh,
 Material, camera, lighting, and rendering nodes.
 
 The first release reads existing prepared data without importing or linking
-CMResearchKit. A CoMotion-compatible camera is deferred to Phase 2.
+CMResearchKit. A Body Mesh Intrinsic Camera is deferred to Phase 2.
 
 ## Agreed Product Boundary
 
@@ -22,8 +22,8 @@ CMResearchKit. A CoMotion-compatible camera is deferred to Phase 2.
   and rendering.
 - Support multiple detected people by merging the selected bodies into one
   geometry in Phase 1.
-- Add a dedicated CoMotion Camera node in Phase 2 rather than letting the
-  geometry provider mutate Fabric's active camera.
+- Add a dedicated Body Mesh Intrinsic Camera node in Phase 2 rather than letting
+  the geometry provider mutate Fabric's active camera.
 
 ## Source Data Contract
 
@@ -327,23 +327,23 @@ the agreed playback and metadata ports, synchronize to an external Time input,
 survive document save/reopen, and perform zero reconstruction when the resolved
 frame and body-selection inputs are unchanged.
 
-## Phase 2 — CoMotion Camera
+## Phase 2 — Body Mesh Intrinsic Camera
 
-Add a second plugin node named `CoMotion Camera` after Phase 1 geometry behavior
-is verified.
+Add a second plugin node named `Body Mesh Intrinsic Camera` after Phase 1
+geometry behavior is verified.
 
 Planned work:
 
-- Subclass Fabric's camera object-node family and provide a Satin perspective
+- [x] Subclass Fabric's camera object-node family and provide a Satin perspective
   camera discovered through Fabric's existing camera selection mechanism.
-- Add provider outputs for any additional source-camera metadata needed by the
-  camera node.
-- Accept Source Size and calibrated projection inputs from Body Mesh Provider.
-- Match the example renderer's source-camera projection and aspect-fit behavior.
-- Keep the camera optional: without it, users continue to use ordinary Fabric
+- [x] Confirm that the current generator camera requires Source Size only; add
+  provider outputs if a future archive format carries more calibration metadata.
+- [x] Accept Source Size from Body Mesh Provider.
+- [x] Match the example renderer's source-camera projection and aspect-fit math.
+- [x] Keep the camera optional: without it, users continue to use ordinary Fabric
   Perspective or Orthographic Camera nodes.
-- Compare reference frames from the CMResearchKit example application and Fabric
-  at multiple output aspect ratios.
+- [ ] Compare reference frames from the CMResearchKit example application and
+  Fabric at multiple output aspect ratios.
 
 Phase 2 is complete when the same frame, source dimensions, and viewport produce
 matching body framing in the example application and Fabric without the Body
@@ -351,7 +351,7 @@ Mesh Provider node directly mutating renderer or graph camera state.
 
 ## Explicitly Out of Scope for Phase 1
 
-- CoMotion camera emulation.
+- Body Mesh Intrinsic Camera emulation.
 - Live camera or video inference.
 - Importing CMResearchKit.
 - GPU-based SMPL reconstruction.
