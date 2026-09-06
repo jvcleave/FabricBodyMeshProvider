@@ -9,6 +9,29 @@ The plug-in provides the `Body Mesh Provider` geometry node and a `Body Mesh
 Intrinsic Camera` node that reproduces the generator app's source-camera
 framing.
 
+## Body Mesh Provider
+
+**Body Mesh Provider** is a time-based geometry node that reads a prepared
+body-mesh asset folder created by the generator app. Select the folder—not its
+individual `frames.bin` file—from the node's Settings panel. The panel validates
+the asset and reports its native frame rate, frame count, duration, and any
+loading error.
+
+The node reconstructs the requested archive frame as Satin geometry that can be
+connected to Fabric's existing Mesh node and material system. It follows graph
+time by default. Connect the **Time** input to use an external clock, or adjust
+**Playback Rate** to speed up, slow down, or reverse graph-time playback.
+
+Use **Confidence** to reject uncertain detections and **Maximum Bodies** to
+limit how many of the highest-confidence people are included. Selected bodies
+are combined into one geometry; the archive does not provide stable person
+identities across frames.
+
+Along with **Geometry**, the node reports detected and output body counts,
+current frame, native frame rate, frame count, duration, frame availability,
+and source dimensions. The **Source Size** output can drive Body Mesh Intrinsic
+Camera when source-matched framing is desired.
+
 ## Body Mesh Intrinsic Camera
 
 **Body Mesh Intrinsic Camera** is an optional perspective-camera node designed
