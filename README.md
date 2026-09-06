@@ -9,6 +9,26 @@ The plug-in provides the `Body Mesh Provider` geometry node and a `Body Mesh
 Intrinsic Camera` node that reproduces the generator app's source-camera
 framing.
 
+## Body Mesh Intrinsic Camera
+
+**Body Mesh Intrinsic Camera** is an optional perspective-camera node designed
+to reproduce the framing used by the body-mesh generator. Connect the Body Mesh
+Provider's **Source Size** output to the camera's **Source Size** input.
+
+The camera derives its field of view from the source dimensions and adjusts it
+as the Fabric viewport changes. Its aspect-fit projection preserves the
+generated mesh's original horizontal and vertical framing across different
+output aspect ratios.
+
+The camera defaults to the origin and looks along Fabric's negative Z axis,
+matching the coordinate conversion performed by Body Mesh Provider. Position,
+orientation, and scale remain available for creative adjustments.
+
+This is a deterministic reconstruction of the generator's camera model. It
+does not recover lens distortion, principal-point offsets, physical focal
+length, or the original camera's position and orientation. Ordinary Fabric
+cameras remain fully supported when source-matched framing is not required.
+
 ## Generate body mesh assets
 
 Download the generator app from the
