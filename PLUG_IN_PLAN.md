@@ -142,8 +142,9 @@ fixtures under the core package's test directory.
 - Execution mode: Provider
 - Time mode: Time Base
 - Base class: `BaseGeometryNode`, which owns the standard Primitive and Geometry
-  ports, primitive conversion, dirty-state handling, and ordinary forced
-  geometry publication.
+  ports and primitive conversion. The provider overrides throwing `execute()`,
+  uses the inherited `evaluate()` bookkeeping, and publishes its stable geometry
+  when its contents or primitive change.
 - Stable name: `Body Mesh Provider`
 
 The node uses a Codable `BodyMeshProviderSettings` value and provides a custom

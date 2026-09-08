@@ -289,18 +289,16 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         try super.stopExecution(renderer: renderer)
     }
 
-    public override func updateGeometry(
+    public override func execute(
         renderer: GraphRenderer,
         executionInfo: GraphExecutionInfo,
         renderPassDescriptor: MTLRenderPassDescriptor,
         commandBuffer: MTLCommandBuffer
-    ) throws -> Bool
+    ) throws
     {
-        var shouldPublishGeometry = try super.updateGeometry(
-            renderer: renderer,
-            executionInfo: executionInfo,
-            renderPassDescriptor: renderPassDescriptor,
-            commandBuffer: commandBuffer
+        var shouldPublishGeometry = evaluate(
+            geometry: geometry,
+            atTime: executionInfo.timing.time
         )
         var requestedFrameIndex: Int?
         do
@@ -315,7 +313,11 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                     hasPublishedGeometry = true
                     shouldPublishGeometry = true
                 }
-                return shouldPublishGeometry
+                if shouldPublishGeometry
+                {
+                    publishGeometry()
+                }
+                return
             }
 
             let playbackTime: TimeInterval
@@ -343,7 +345,11 @@ public final class BodyMeshProviderNode: BaseGeometryNode
 
             guard evaluationKey != lastEvaluationKey else
             {
-                return shouldPublishGeometry
+                if shouldPublishGeometry
+                {
+                    publishGeometry()
+                }
+                return
             }
 
             let frame = try archiveReader.frameAtIndex(frameIndex)
@@ -399,7 +405,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                 updateRuntimeStatus(runtimeStatus.clearingError())
             }
 
-            return true
+            publishGeometry()
         }
         catch
         {
@@ -433,7 +439,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                 updateRuntimeStatus(runtimeStatus.reporting(error: error))
             }
             hasPublishedGeometry = true
-            outputGeometry.send(geometry, force: true)
+            publishGeometry()
             throw FabricError(
                 .execution(.failed),
                 severity: .recoverable,
@@ -556,6 +562,11 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                 runtimeStatus: newStatus
             )
         }
+    }
+
+    private func publishGeometry()
+    {
+        outputGeometry.send(geometry, force: true)
     }
 
 }

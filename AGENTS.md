@@ -29,8 +29,9 @@ CMResearchKit target.
 - The plug-in entry point must do no archive loading, constants parsing, or mesh
   reconstruction during discovery.
 - `BodyMeshProviderNode` inherits from `BaseGeometryNode`. Let the base class own
-  the standard Primitive and Geometry ports, primitive conversion, dirty-state
-  handling, and ordinary forced geometry publication.
+  the standard Primitive and Geometry ports and primitive conversion. The node's
+  throwing `execute()` calls the inherited `evaluate()` bookkeeping and
+  force-publishes its stable geometry only when its contents or primitive change.
 - Keep node metadata and registered port names stable. Registration remains the
   source of truth for port type and order.
 - Use `ParameterPort` for adjustable inputs and seed values through their Satin
