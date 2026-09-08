@@ -141,8 +141,9 @@ fixtures under the core package's test directory.
 - Node type: Geometry
 - Execution mode: Provider
 - Time mode: Time Base
-- Base class: `Node` (Fabric's current `BaseGeometryNode` is not open to external
-  plug-ins, so the plug-in owns the same Primitive and Geometry port behavior)
+- Base class: `BaseGeometryNode`, which owns the standard Primitive and Geometry
+  ports, primitive conversion, dirty-state handling, and ordinary forced
+  geometry publication.
 - Stable name: `Body Mesh Provider`
 
 The node uses a Codable `BodyMeshProviderSettings` value and provides a custom

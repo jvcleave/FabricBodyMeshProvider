@@ -28,8 +28,9 @@ CMResearchKit target.
   `FABRIC_SOURCE_ROOT` when a different checkout is supplied.
 - The plug-in entry point must do no archive loading, constants parsing, or mesh
   reconstruction during discovery.
-- `BodyMeshProviderNode` inherits directly from `Node`: Fabric's current
-  `BaseGeometryNode` is public but not open to external plug-ins.
+- `BodyMeshProviderNode` inherits from `BaseGeometryNode`. Let the base class own
+  the standard Primitive and Geometry ports, primitive conversion, dirty-state
+  handling, and ordinary forced geometry publication.
 - Keep node metadata and registered port names stable. Registration remains the
   source of truth for port type and order.
 - Use `ParameterPort` for adjustable inputs and seed values through their Satin

@@ -20,11 +20,9 @@ private enum BodyMeshProviderNodeError: LocalizedError
     }
 }
 
-public final class BodyMeshProviderNode: Node
+public final class BodyMeshProviderNode: BaseGeometryNode
 {
     public override class var name: String { "Body Mesh Provider" }
-    public override class var nodeType: Node.NodeType { .Geometery }
-    public override class var nodeExecutionMode: Node.ExecutionMode { .Provider }
     public override class var nodeDescription: String
     {
         "Loads a CMResearchKit body-mesh asset and provides its animated geometry."
@@ -34,6 +32,8 @@ public final class BodyMeshProviderNode: Node
     public private(set) var providerSettings: BodyMeshProviderSettings
 
     private lazy var bodyMeshGeometry = BodyMeshGeometry(context: context)
+    public override var geometry: Geometry { bodyMeshGeometry }
+
     private var archiveReader: CoMotionArchiveReader?
     private var attemptedAssetFolderURLString: String?
     private var assetLoadError: (any Error)?
@@ -120,30 +120,6 @@ public final class BodyMeshProviderNode: Node
             ),
         ]
 
-        let geometryPorts: [(name: String, port: Fabric.Port)] =
-        [
-            (
-                "inputPrimitiveType",
-                ParameterPort(
-                    parameter: StringParameter(
-                        "Primitive",
-                        "Triangle",
-                        ["Point", "Line", "Line Strip", "Triangle", "Triangle Strip"],
-                        .dropdown,
-                        "Rendering primitive type for the geometry mesh"
-                    )
-                )
-            ),
-            (
-                "outputGeometry",
-                NodePort<Geometry>(
-                    name: "Geometry",
-                    kind: .Outlet,
-                    description: "The reconstructed body mesh geometry"
-                )
-            ),
-        ]
-
         let providerOutputs: [(name: String, port: Fabric.Port)] =
         [
             (
@@ -212,7 +188,7 @@ public final class BodyMeshProviderNode: Node
             ),
         ]
 
-        return providerInputs + geometryPorts + super.registerPorts(context: context) + providerOutputs
+        return providerInputs + super.registerPorts(context: context) + providerOutputs
     }
 
     public var inputTime: ParameterPort<Float> { port(named: "inputTime") }
@@ -220,9 +196,6 @@ public final class BodyMeshProviderNode: Node
     public var inputPlaybackRate: ParameterPort<Float> { port(named: "inputPlaybackRate") }
     public var inputConfidence: ParameterPort<Float> { port(named: "inputConfidence") }
     public var inputMaximumBodies: ParameterPort<Int> { port(named: "inputMaximumBodies") }
-    public var inputPrimitiveType: ParameterPort<String> { port(named: "inputPrimitiveType") }
-
-    public var outputGeometry: NodePort<Geometry> { port(named: "outputGeometry") }
     public var outputDetectedBodies: NodePort<Int> { port(named: "outputDetectedBodies") }
     public var outputBodies: NodePort<Int> { port(named: "outputBodies") }
     public var outputCurrentFrame: NodePort<Int> { port(named: "outputCurrentFrame") }
@@ -316,13 +289,19 @@ public final class BodyMeshProviderNode: Node
         try super.stopExecution(renderer: renderer)
     }
 
-    public override func execute(
+    public override func updateGeometry(
         renderer: GraphRenderer,
         executionInfo: GraphExecutionInfo,
         renderPassDescriptor: MTLRenderPassDescriptor,
         commandBuffer: MTLCommandBuffer
-    ) throws
+    ) throws -> Bool
     {
+        var shouldPublishGeometry = try super.updateGeometry(
+            renderer: renderer,
+            executionInfo: executionInfo,
+            renderPassDescriptor: renderPassDescriptor,
+            commandBuffer: commandBuffer
+        )
         var requestedFrameIndex: Int?
         do
         {
@@ -330,18 +309,13 @@ public final class BodyMeshProviderNode: Node
 
             guard let archiveReader else
             {
-                var shouldPublishGeometry = inputPrimitiveType.valueDidChange
                 if hasPublishedGeometry == false
                 {
                     publishEmptyState()
                     hasPublishedGeometry = true
                     shouldPublishGeometry = true
                 }
-                if shouldPublishGeometry
-                {
-                    publishGeometry()
-                }
-                return
+                return shouldPublishGeometry
             }
 
             let playbackTime: TimeInterval
@@ -367,15 +341,9 @@ public final class BodyMeshProviderNode: Node
                 maximumBodyCount: maximumBodyCount
             )
 
-            guard evaluationKey != lastEvaluationKey || inputPrimitiveType.valueDidChange else
+            guard evaluationKey != lastEvaluationKey else
             {
-                return
-            }
-
-            if evaluationKey == lastEvaluationKey
-            {
-                publishGeometry()
-                return
+                return shouldPublishGeometry
             }
 
             let frame = try archiveReader.frameAtIndex(frameIndex)
@@ -431,7 +399,7 @@ public final class BodyMeshProviderNode: Node
                 updateRuntimeStatus(runtimeStatus.clearingError())
             }
 
-            publishGeometry()
+            return true
         }
         catch
         {
@@ -465,7 +433,7 @@ public final class BodyMeshProviderNode: Node
                 updateRuntimeStatus(runtimeStatus.reporting(error: error))
             }
             hasPublishedGeometry = true
-            publishGeometry()
+            outputGeometry.send(geometry, force: true)
             throw FabricError(
                 .execution(.failed),
                 severity: .recoverable,
@@ -590,26 +558,4 @@ public final class BodyMeshProviderNode: Node
         }
     }
 
-    private func publishGeometry()
-    {
-        bodyMeshGeometry.primitiveType = selectedPrimitiveType()
-        outputGeometry.send(bodyMeshGeometry, force: true)
-    }
-
-    private func selectedPrimitiveType() -> MTLPrimitiveType
-    {
-        switch inputPrimitiveType.value
-        {
-            case "Point":
-                return .point
-            case "Line":
-                return .line
-            case "Line Strip":
-                return .lineStrip
-            case "Triangle Strip":
-                return .triangleStrip
-            default:
-                return .triangle
-        }
-    }
 }
