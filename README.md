@@ -34,30 +34,25 @@ current frame, native frame rate, frame count, duration, frame availability,
 and source dimensions. The **Source Size** output can drive Body Mesh Intrinsic
 Camera when source-matched framing is desired.
 
-### Inputs
+### Port reference
 
-| Input | Type | Default | Description |
-| --- | --- | --- | --- |
-| **Time** | Float | Graph time when unconnected | Playback position in seconds. When connected, this value is authoritative and **Playback Rate** is ignored. |
-| **Loop** | Boolean | `true` | Wraps playback to the beginning when it reaches the end of the asset. When disabled, playback holds the first or last frame. |
-| **Playback Rate** | Float | `1` | Multiplies graph-time playback speed when **Time** is unconnected. Use values below `1` for slower playback, values above `1` for faster playback, or a negative value to play in reverse. |
-| **Confidence** | Float | `0.2` | Minimum confidence required for a detected body to be included. The supported range is `0.05...1`. |
-| **Maximum Bodies** | Integer | `1` | Maximum number of highest-confidence bodies merged into the geometry. The supported range is `1...8`. |
-| **Primitive** | Menu | `Triangle` | Metal primitive used to render the geometry. Body meshes normally use `Triangle`. |
-
-### Outputs
-
-| Output | Type | Description |
-| --- | --- | --- |
-| **Geometry** | Geometry | Selected bodies merged into one indexed Satin geometry. Connect this to Fabric's Mesh node. |
-| **Detected Bodies** | Integer | Number of bodies stored in the current frame before confidence filtering. |
-| **Output Bodies** | Integer | Number of bodies included after confidence filtering and the **Maximum Bodies** limit. |
-| **Current Frame** | Integer | Zero-based archive frame represented by the current geometry. |
-| **Frame Rate** | Float | Native frame rate encoded in the selected asset. |
-| **Frame Count** | Integer | Total number of frames in the selected asset. |
-| **Duration** | Float | Total asset duration in seconds. |
-| **Frame Available** | Boolean | `true` when at least one body passes filtering for the current frame. |
-| **Source Size** | Vector 2 | Encoded source width and height. Connect this to **Body Mesh Intrinsic Camera** for source-matched framing. |
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Time` | Input | `Float` | Graph time when unconnected | Playback position in seconds. When connected, this value is authoritative and `Playback Rate` is ignored. |
+| `Loop` | Input | `Bool` | `true` | Wraps playback to the beginning when it reaches the end of the asset. When disabled, playback holds the first or last frame. |
+| `Playback Rate` | Input | `Float` | `1` | Multiplies graph-time playback speed when `Time` is unconnected. Use values below `1` for slower playback, values above `1` for faster playback, or a negative value to play in reverse. |
+| `Confidence` | Input | `Float` | `0.2`; range `0.05...1` | Minimum confidence required for a detected body to be included. |
+| `Maximum Bodies` | Input | `Int` | `1`; range `1...8` | Maximum number of highest-confidence bodies merged into the geometry. |
+| `Primitive` | Input | `String` menu | `Triangle` | Metal primitive used to render the geometry. Body meshes normally use `Triangle`. |
+| `Geometry` | Output | `Geometry` | — | Selected bodies merged into one indexed Satin geometry. Connect this to Fabric's Mesh node. |
+| `Detected Bodies` | Output | `Int` | — | Number of bodies stored in the current frame before confidence filtering. |
+| `Output Bodies` | Output | `Int` | — | Number of bodies included after confidence filtering and the `Maximum Bodies` limit. |
+| `Current Frame` | Output | `Int` | — | Zero-based archive frame represented by the current geometry. |
+| `Frame Rate` | Output | `Float` | — | Native frame rate encoded in the selected asset. |
+| `Frame Count` | Output | `Int` | — | Total number of frames in the selected asset. |
+| `Duration` | Output | `Float` | — | Total asset duration in seconds. |
+| `Frame Available` | Output | `Bool` | — | `true` when at least one body passes filtering for the current frame. |
+| `Source Size` | Output | `Vector2` | — | Encoded source width and height. Connect this to `Body Mesh Intrinsic Camera` for source-matched framing. |
 
 ## Body Mesh Intrinsic Camera
 
@@ -79,19 +74,17 @@ does not recover lens distortion, principal-point offsets, physical focal
 length, or the original camera's position and orientation. Ordinary Fabric
 cameras remain fully supported when source-matched framing is not required.
 
-### Inputs
+### Port reference
 
-| Input | Type | Default | Description |
-| --- | --- | --- | --- |
-| **Source Size** | Vector 2 | `(1920, 1080)` | Encoded source width and height. Connect the provider's **Source Size** output here. |
-| **Orientation** | Vector 4 | `(0, 0, 0, 1)` | Camera orientation as an `(x, y, z, w)` quaternion. The identity orientation looks along Fabric's negative Z axis. |
-| **Scale** | Vector 3 | `(1, 1, 1)` | Scales the camera view along each axis. |
-| **Position** | Vector 3 | `(0, 0, 0)` | Camera position in world units. Generated body meshes are calibrated with the camera at the origin. |
-| **Visible** | Boolean | `true` | Inherited Fabric object visibility. Active-camera selection still follows Fabric's last-added-camera behavior. |
-| **Render Order** | Integer | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
-| **Render Pass** | Integer | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
-
-### Outputs
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Source Size` | Input | `Vector2` | `(1920, 1080)` | Encoded source width and height. Connect the provider's `Source Size` output here. |
+| `Orientation` | Input | `Vector4` | `(0, 0, 0, 1)` | Camera orientation as an `(x, y, z, w)` quaternion. The identity orientation looks along Fabric's negative Z axis. |
+| `Scale` | Input | `Vector3` | `(1, 1, 1)` | Scales the camera view along each axis. |
+| `Position` | Input | `Vector3` | `(0, 0, 0)` | Camera position in world units. Generated body meshes are calibrated with the camera at the origin. |
+| `Visible` | Input | `Bool` | `true` | Inherited Fabric object visibility. Active-camera selection still follows Fabric's last-added-camera behavior. |
+| `Render Order` | Input | `Int` | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
+| `Render Pass` | Input | `Int` | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
 
 Body Mesh Intrinsic Camera has no output ports. Fabric discovers camera nodes in
 the graph directly and uses its normal active-camera selection behavior.
