@@ -156,7 +156,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "fabric_configuration=\"debug\"\nif [ \"$CONFIGURATION\" = \"Release\" ]; then\n    fabric_configuration=\"release\"\nfi\n\nfabric_source_root=\"${FABRIC_SOURCE_ROOT:-${PROJECT_DIR}/../../Fabric}\"\n/usr/bin/xcrun swift build --package-path \"$fabric_source_root\" --configuration \"$fabric_configuration\"\n";
+			shellScript = "fabric_configuration=\"debug\"\nif [ \"$CONFIGURATION\" = \"Release\" ]; then\n    fabric_configuration=\"release\"\nfi\n\nfabric_source_root=\"${FABRIC_SOURCE_ROOT:-${PROJECT_DIR}/../../Fabric}\"\n/usr/bin/xcrun swift build --package-path \"$fabric_source_root\" --build-system native --configuration \"$fabric_configuration\"\n";
 		};
 		B0D100000000000000000004 /* Install Fabric Plugin */ = {
 			isa = PBXShellScriptBuildPhase;
