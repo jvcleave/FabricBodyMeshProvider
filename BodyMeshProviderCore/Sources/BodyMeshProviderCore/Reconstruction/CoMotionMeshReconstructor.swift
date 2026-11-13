@@ -9,6 +9,8 @@ public enum CoMotionMeshReconstructionError: LocalizedError, Equatable, Sendable
     case nonFiniteConstants
     case invalidTriangleIndex
     case invalidSkinningWeights
+    case tooManySkinningInfluences
+    case nonFiniteSkinningTransform
     case zeroHomogeneousWeight
     case nonFiniteVertex
     case invalidNormal
@@ -27,6 +29,10 @@ public enum CoMotionMeshReconstructionError: LocalizedError, Equatable, Sendable
                 return "The CoMotion mesh constants contain an invalid triangle index."
             case .invalidSkinningWeights:
                 return "The CoMotion mesh constants contain invalid skinning weights."
+            case .tooManySkinningInfluences:
+                return "GPU skinning supports up to four joint influences per vertex."
+            case .nonFiniteSkinningTransform:
+                return "CoMotion mesh skinning produced a non-finite joint transform."
             case .zeroHomogeneousWeight:
                 return "CoMotion mesh skinning produced a zero homogeneous weight."
             case .nonFiniteVertex:
@@ -58,10 +64,33 @@ public struct CoMotionBodyMesh: Sendable
     }
 }
 
+public struct CoMotionSkinningMesh: Sendable
+{
+    public let triangleIndices: [UInt32]
+    public let canonicalNormals: [SIMD3<Float>]
+    public let jointIndices: [SIMD4<UInt16>]
+    public let jointWeights: [SIMD4<Float>]
+}
+
+public struct CoMotionBlendShapeWorkspace: Sendable
+{
+    fileprivate var positions: [Float]
+    fileprivate var offsets: [Float]
+
+    public init()
+    {
+        positions = []
+        positions.reserveCapacity(CoMotionMeshReconstructor.vertexCount * 3)
+        offsets = [Float](
+            repeating: 0,
+            count: CoMotionMeshReconstructor.vertexCount * 3
+        )
+    }
+}
+
 public struct CoMotionMeshReconstructionWorkspace: Sendable
 {
-    fileprivate var posedVertices: [Float]
-    fileprivate var offsets: [Float]
+    fileprivate var blendShapes = CoMotionBlendShapeWorkspace()
     fileprivate var transforms: [Float]
     fileprivate var vertices: [SIMD3<Float>]
     fileprivate var localVertices: [SIMD3<Float>]
@@ -69,12 +98,6 @@ public struct CoMotionMeshReconstructionWorkspace: Sendable
 
     public init()
     {
-        posedVertices = []
-        posedVertices.reserveCapacity(CoMotionMeshReconstructor.vertexCount * 3)
-        offsets = [Float](
-            repeating: 0,
-            count: CoMotionMeshReconstructor.vertexCount * 3
-        )
         transforms = [Float](
             repeating: 0,
             count: CoMotionMeshReconstructor.vertexCount * 16
@@ -87,21 +110,8 @@ public struct CoMotionMeshReconstructionWorkspace: Sendable
         normals.reserveCapacity(CoMotionMeshReconstructor.vertexCount)
     }
 
-    fileprivate mutating func reset(
-        vertexTemplate: [Float],
-        includeLocalVertices: Bool
-    )
+    fileprivate mutating func reset(includeLocalVertices: Bool)
     {
-        posedVertices.removeAll(keepingCapacity: true)
-        posedVertices.append(contentsOf: vertexTemplate)
-        for offsetIndex in offsets.indices
-        {
-            offsets[offsetIndex] = 0
-        }
-        for transformIndex in transforms.indices
-        {
-            transforms[transformIndex] = 0
-        }
         vertices.removeAll(keepingCapacity: true)
         localVertices.removeAll(keepingCapacity: true)
         if includeLocalVertices
@@ -135,7 +145,8 @@ public struct CoMotionMeshReconstructor: Sendable
             )
         }
 
-        let floatCount = Self.vertexCount * (3 + 30 + 621 + 24)
+        let jointCount = CoMotionMeshParameters.jointCount
+        let floatCount = Self.vertexCount * (3 + 30 + 621 + jointCount)
         let words: [UInt32] = constantsData.withUnsafeBytes
         { bytes in
             var decodedWords: [UInt32] = []
@@ -184,7 +195,7 @@ public struct CoMotionMeshReconstructor: Sendable
         for vertexIndex in 0 ..< Self.vertexCount
         {
             let weights = skinningWeights[
-                vertexIndex * 24 ..< (vertexIndex + 1) * 24
+                vertexIndex * jointCount ..< (vertexIndex + 1) * jointCount
             ]
             guard weights.allSatisfy({ $0 >= 0 && $0 <= 1 }),
                   abs(weights.reduce(0, +) - 1) < 0.0001
@@ -239,6 +250,92 @@ public struct CoMotionMeshReconstructor: Sendable
         }
     }
 
+    public func makeSkinningMesh() throws -> CoMotionSkinningMesh
+    {
+        let jointCount = CoMotionMeshParameters.jointCount
+        var jointIndices: [SIMD4<UInt16>] = []
+        var jointWeights: [SIMD4<Float>] = []
+        jointIndices.reserveCapacity(Self.vertexCount)
+        jointWeights.reserveCapacity(Self.vertexCount)
+        for vertexIndex in 0 ..< Self.vertexCount
+        {
+            var indices = SIMD4<UInt16>.zero
+            var weights = SIMD4<Float>.zero
+            var influenceCount = 0
+            for jointIndex in 0 ..< jointCount
+            {
+                let weight = skinningWeights[vertexIndex * jointCount + jointIndex]
+                guard weight > 0 else { continue }
+                guard influenceCount < 4 else
+                {
+                    throw CoMotionMeshReconstructionError.tooManySkinningInfluences
+                }
+                indices[influenceCount] = UInt16(jointIndex)
+                weights[influenceCount] = weight
+                influenceCount += 1
+            }
+            jointIndices.append(indices)
+            jointWeights.append(weights)
+        }
+        return CoMotionSkinningMesh(
+            triangleIndices: triangleIndices,
+            canonicalNormals: canonicalNormals,
+            jointIndices: jointIndices,
+            jointWeights: jointWeights
+        )
+    }
+
+    /// The packed XYZ positions after shape and pose corrections, before joint skinning.
+    public func blendShapePositions(
+        parameters: CoMotionMeshParameters,
+        workspace: inout CoMotionBlendShapeWorkspace
+    ) -> [Float]
+    {
+        workspace.positions.removeAll(keepingCapacity: true)
+        workspace.positions.append(contentsOf: vertexTemplate)
+        vDSP_mmul(
+            shapeDirections,
+            1,
+            parameters.betas,
+            1,
+            &workspace.offsets,
+            1,
+            vDSP_Length(Self.vertexCount * 3),
+            1,
+            vDSP_Length(CoMotionMeshParameters.betaCount)
+        )
+        vDSP_vadd(
+            workspace.positions,
+            1,
+            workspace.offsets,
+            1,
+            &workspace.positions,
+            1,
+            vDSP_Length(Self.vertexCount * 3)
+        )
+        vDSP_mmul(
+            poseDirections,
+            1,
+            parameters.poseFeature,
+            1,
+            &workspace.offsets,
+            1,
+            vDSP_Length(Self.vertexCount * 3),
+            1,
+            vDSP_Length(CoMotionMeshParameters.poseFeatureCount)
+        )
+        vDSP_vadd(
+            workspace.positions,
+            1,
+            workspace.offsets,
+            1,
+            &workspace.positions,
+            1,
+            vDSP_Length(Self.vertexCount * 3)
+        )
+        return workspace.positions
+    }
+
     public func reconstructMesh(
         parameters: CoMotionMeshParameters
     ) throws -> CoMotionBodyMesh
@@ -257,49 +354,10 @@ public struct CoMotionMeshReconstructor: Sendable
         includeLocalVertices: Bool
     ) throws -> CoMotionBodyMesh
     {
-        workspace.reset(
-            vertexTemplate: vertexTemplate,
-            includeLocalVertices: includeLocalVertices
-        )
-        vDSP_mmul(
-            shapeDirections,
-            1,
-            parameters.betas,
-            1,
-            &workspace.offsets,
-            1,
-            vDSP_Length(Self.vertexCount * 3),
-            1,
-            vDSP_Length(CoMotionMeshParameters.betaCount)
-        )
-        vDSP_vadd(
-            workspace.posedVertices,
-            1,
-            workspace.offsets,
-            1,
-            &workspace.posedVertices,
-            1,
-            vDSP_Length(Self.vertexCount * 3)
-        )
-        vDSP_mmul(
-            poseDirections,
-            1,
-            parameters.poseFeature,
-            1,
-            &workspace.offsets,
-            1,
-            vDSP_Length(Self.vertexCount * 3),
-            1,
-            vDSP_Length(CoMotionMeshParameters.poseFeatureCount)
-        )
-        vDSP_vadd(
-            workspace.posedVertices,
-            1,
-            workspace.offsets,
-            1,
-            &workspace.posedVertices,
-            1,
-            vDSP_Length(Self.vertexCount * 3)
+        workspace.reset(includeLocalVertices: includeLocalVertices)
+        let blendPositions = blendShapePositions(
+            parameters: parameters,
+            workspace: &workspace.blendShapes
         )
         vDSP_mmul(
             skinningWeights,
@@ -310,7 +368,7 @@ public struct CoMotionMeshReconstructor: Sendable
             1,
             vDSP_Length(Self.vertexCount),
             16,
-            24
+            vDSP_Length(CoMotionMeshParameters.jointCount)
         )
         let translation = SIMD3(
             parameters.translation[0],
@@ -322,9 +380,9 @@ public struct CoMotionMeshReconstructor: Sendable
             let positionIndex = vertexIndex * 3
             let transformIndex = vertexIndex * 16
             let position = SIMD4(
-                workspace.posedVertices[positionIndex],
-                workspace.posedVertices[positionIndex + 1],
-                workspace.posedVertices[positionIndex + 2],
+                blendPositions[positionIndex],
+                blendPositions[positionIndex + 1],
+                blendPositions[positionIndex + 2],
                 1
             )
             var transformedPosition = SIMD4<Float>(repeating: 0)

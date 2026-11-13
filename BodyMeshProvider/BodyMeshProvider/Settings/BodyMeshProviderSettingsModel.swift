@@ -109,30 +109,30 @@ struct BodyMeshProviderRuntimeStatus: Equatable, Sendable
 @MainActor @Observable
 final class BodyMeshProviderSettingsModel
 {
-    var assetFolderURLString: String
+    private var settings: BodyMeshProviderSettings
     var isChoosingAssetFolder = false
     var importErrorMessage: String?
     private(set) var runtimeStatus: BodyMeshProviderRuntimeStatus
 
-    @ObservationIgnored private let updateAssetFolder: (URL?) -> Void
+    @ObservationIgnored private let updateSettings: (BodyMeshProviderSettings) -> Void
     @ObservationIgnored private let reloadAsset: () -> Void
 
     init(
         settings: BodyMeshProviderSettings,
         runtimeStatus: BodyMeshProviderRuntimeStatus,
-        updateAssetFolder: @escaping (URL?) -> Void,
+        updateSettings: @escaping (BodyMeshProviderSettings) -> Void,
         reloadAsset: @escaping () -> Void
     )
     {
-        assetFolderURLString = settings.assetFolderURLString
+        self.settings = settings
         self.runtimeStatus = runtimeStatus
-        self.updateAssetFolder = updateAssetFolder
+        self.updateSettings = updateSettings
         self.reloadAsset = reloadAsset
     }
 
     var assetFolderDisplayName: String
     {
-        guard let assetFolderURL else { return "No folder selected" }
+        guard let assetFolderURL = settings.assetFolderURL else { return "No folder selected" }
         return assetFolderURL.lastPathComponent
     }
 
@@ -173,24 +173,31 @@ final class BodyMeshProviderSettingsModel
 
     var canReloadAsset: Bool
     {
-        assetFolderURL != nil
+        settings.assetFolderURL != nil
     }
 
     func selectAssetFolder(_ selectedURL: URL)
     {
         let standardizedURL = selectedURL.standardizedFileURL
-        assetFolderURLString = standardizedURL.absoluteString
+        let folderURLString = standardizedURL.absoluteString
         importErrorMessage = nil
+        if settings.assetFolderURLString == folderURLString
+        {
+            requestReload()
+            return
+        }
+
+        settings.assetFolderURLString = folderURLString
         runtimeStatus = .awaitingLoad(assetFolderURL: standardizedURL)
-        updateAssetFolder(standardizedURL)
+        updateSettings(settings)
     }
 
     func clearAssetFolder()
     {
-        assetFolderURLString = ""
+        settings.assetFolderURLString = ""
         importErrorMessage = nil
         runtimeStatus = .noAssetSelected
-        updateAssetFolder(nil)
+        updateSettings(settings)
     }
 
     func reportImportError(_ error: any Error)
@@ -200,7 +207,7 @@ final class BodyMeshProviderSettingsModel
 
     func requestReload()
     {
-        guard let assetFolderURL else { return }
+        guard let assetFolderURL = settings.assetFolderURL else { return }
         runtimeStatus = .awaitingLoad(assetFolderURL: assetFolderURL)
         reloadAsset()
     }
@@ -210,13 +217,7 @@ final class BodyMeshProviderSettingsModel
         runtimeStatus: BodyMeshProviderRuntimeStatus
     )
     {
-        assetFolderURLString = settings.assetFolderURLString
+        self.settings = settings
         self.runtimeStatus = runtimeStatus
-    }
-
-    private var assetFolderURL: URL?
-    {
-        guard assetFolderURLString.isEmpty == false else { return nil }
-        return URL(string: assetFolderURLString)?.standardizedFileURL
     }
 }

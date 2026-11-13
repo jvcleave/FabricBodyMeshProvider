@@ -15,8 +15,9 @@ framing.
 
 **Body Mesh Provider** is a time-based geometry node that reads a prepared
 body-mesh asset folder created by the generator app. Select the folder—not its
-individual `frames.bin` file—from the node's Settings panel. The panel validates
-the asset and reports its native frame rate, frame count, duration, and any
+individual `frames.bin` file—from the node's Settings panel. Choosing a folder
+loads it on the next graph frame, even if it is already selected. The panel
+reports compatibility, native frame rate, frame count, duration, and any
 loading error.
 
 The node reconstructs the requested archive frame as Satin geometry that can be
@@ -28,6 +29,13 @@ Use **Confidence** to reject uncertain detections and **Maximum Bodies** to
 limit how many of the highest-confidence people are included. Selected bodies
 are combined into one geometry; the archive does not provide stable person
 identities across frames.
+
+Body Mesh Provider uses GPU skinning automatically. The CPU calculates CoMotion's
+shape and pose corrections, and Satin's vertex shaders apply joint transforms
+when drawing the mesh. Use a material that supports Satin skinning. A CPU reader
+of the geometry sees positions before joint transforms on the GPU path. Frames
+with projective joint transforms use CPU reconstruction for the per-vertex
+perspective divide.
 
 Along with **Geometry**, the node reports detected and output body counts,
 current frame, native frame rate, frame count, duration, frame availability,
@@ -84,7 +92,6 @@ cameras remain fully supported when source-matched framing is not required.
 | `Position` | Input | `Vector3` | `(0, 0, 0)` | Camera position in world units. Generated body meshes are calibrated with the camera at the origin. |
 | `Visible` | Input | `Bool` | `true` | Inherited Fabric object visibility. Active-camera selection still follows Fabric's last-added-camera behavior. |
 | `Render Order` | Input | `Int` | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
-| `Render Pass` | Input | `Int` | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
 
 Body Mesh Intrinsic Camera has no output ports. Fabric discovers camera nodes in
 the graph directly and uses its normal active-camera selection behavior.
@@ -156,11 +163,11 @@ repository, re-link it once:
 
 ### Four-body camera sample
 
-For a more representative intrinsic-camera example, download and expand
-[`C00F9E45-6C83-4760-A700-BBF2A37D0380.zip`](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/C00F9E45-6C83-4760-A700-BBF2A37D0380.zip),
-then open [`FabricScenes/Camera-sample.fabric`](FabricScenes/Camera-sample.fabric).
-Select its **Body Mesh Provider** node and re-link the asset folder to the
-expanded `C00F9E45-6C83-4760-A700-BBF2A37D0380` directory.
+Open [`FabricScenes/Camera-sample.fabric`](FabricScenes/Camera-sample.fabric)
+and re-link the included asset folder as described above. For the original
+four-performer example, expand the release archive and select its
+`C00F9E45-6C83-4760-A700-BBF2A37D0380` directory in Body Mesh Provider Settings.
+[Four-performer archive](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/C00F9E45-6C83-4760-A700-BBF2A37D0380.zip)
 
 The scene connects **Source Size** to **Body Mesh Intrinsic Camera** and sets
 **Maximum Bodies** to `4`, allowing all four performers in the sample to be
@@ -198,3 +205,8 @@ swift test --package-path BodyMeshProviderCore
 
 The checked-in example asset is always exercised. Additional local archives
 under `SampleData` are exercised when present and remain ignored by Git.
+
+## Maintainer documentation
+
+Find the implementation plan, archive contract, and verification references in
+the [internal documentation index](docs/internal/INTERNAL_DOCUMENTATION.md).

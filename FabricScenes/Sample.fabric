@@ -579,34 +579,6 @@
           },
           {
             "payload" : {
-              "type" : "Int",
-              "isProxyPort" : false,
-              "isParameterPort" : true,
-              "base" : {
-                "name" : "Render Pass",
-                "parameter" : {
-                  "type" : "int",
-                  "base" : {
-                    "min" : 0,
-                    "defaultValue" : 0,
-                    "value" : 0,
-                    "description" : "Render pass index for multi-pass rendering",
-                    "controlType" : "inputfield",
-                    "id" : "A207539A-0C34-47F5-9365-25C104E8A975",
-                    "max" : 1,
-                    "label" : "Render Pass"
-                  }
-                },
-                "portDescription" : "Render pass index for multi-pass rendering",
-                "kind" : "Inlet",
-                "id" : "A207539A-0C34-47F5-9365-25C104E8A975",
-                "published" : false
-              }
-            },
-            "name" : "inputRenderPass"
-          },
-          {
-            "payload" : {
               "type" : "Vector 3",
               "isProxyPort" : false,
               "isParameterPort" : true,
@@ -1119,34 +1091,6 @@
               }
             },
             "name" : "inputRenderOrder"
-          },
-          {
-            "payload" : {
-              "type" : "Int",
-              "isProxyPort" : false,
-              "isParameterPort" : true,
-              "base" : {
-                "name" : "Render Pass",
-                "parameter" : {
-                  "type" : "int",
-                  "base" : {
-                    "min" : 0,
-                    "defaultValue" : 0,
-                    "value" : 0,
-                    "description" : "Render pass index for multi-pass rendering",
-                    "controlType" : "inputfield",
-                    "id" : "375968B9-F4A1-4786-BC32-0B6F7BF6EC0F",
-                    "max" : 1,
-                    "label" : "Render Pass"
-                  }
-                },
-                "portDescription" : "Render pass index for multi-pass rendering",
-                "kind" : "Inlet",
-                "id" : "375968B9-F4A1-4786-BC32-0B6F7BF6EC0F",
-                "published" : false
-              }
-            },
-            "name" : "inputRenderPass"
           },
           {
             "payload" : {

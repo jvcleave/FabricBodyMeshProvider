@@ -21,7 +21,8 @@ public struct CoMotionMeshParameters: Equatable, Sendable
 {
     public static let betaCount = 10
     public static let poseFeatureCount = 207
-    public static let skinningTransformCount = 24 * 16
+    public static let jointCount = 24
+    public static let skinningTransformCount = jointCount * 16
     public static let translationCount = 3
     public static let totalFloatCount = betaCount + poseFeatureCount
         + skinningTransformCount + translationCount

@@ -1,8 +1,10 @@
 # Fabric Body Mesh Provider Engineering Guidance
 
-Review `README.md` and `PLUG_IN_PLAN.md` before making changes. This repository
-is a Fabric plug-in developed against the adjacent Fabric checkout; it is not a
-CMResearchKit target.
+Read the [README](README.md) and
+[implementation plan](docs/internal/todos/PLUG_IN_PLAN.md) before making
+changes. The [internal documentation index](docs/internal/INTERNAL_DOCUMENTATION.md)
+routes plans and handoffs. This repository develops a Fabric plug-in against
+the adjacent Fabric checkout. It builds independently of CMResearchKit.
 
 ## Project boundaries
 

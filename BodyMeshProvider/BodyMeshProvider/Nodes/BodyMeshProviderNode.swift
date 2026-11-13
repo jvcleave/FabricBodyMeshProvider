@@ -40,6 +40,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private var lastEvaluationKey: EvaluationKey?
     private var hasPublishedGeometry = false
     private var reconstructionWorkspace = CoMotionMeshReconstructionWorkspace()
+    private var blendShapeWorkspace = CoMotionBlendShapeWorkspace()
     private var runtimeStatus = BodyMeshProviderRuntimeStatus.noAssetSelected
     private weak var settingsModel: BodyMeshProviderSettingsModel?
 
@@ -238,16 +239,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     {
         guard providerSettings != settings else { return }
         providerSettings = settings
-        invalidateLoadedAsset()
-        if let assetFolderURL = settings.assetFolderURL
-        {
-            updateRuntimeStatus(.awaitingLoad(assetFolderURL: assetFolderURL))
-        }
-        else
-        {
-            updateRuntimeStatus(.noAssetSelected)
-        }
-        markDirty()
+        reloadAsset()
     }
 
     public override func providesSettingsView() -> Bool { true }
@@ -261,11 +253,9 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             let model = settingsModel ?? BodyMeshProviderSettingsModel(
                 settings: providerSettings,
                 runtimeStatus: runtimeStatus,
-                updateAssetFolder:
-                { [weak self] assetFolderURL in
-                    self?.setProviderSettings(
-                        BodyMeshProviderSettings(assetFolderURL: assetFolderURL)
-                    )
+                updateSettings:
+                { [weak self] settings in
+                    self?.setProviderSettings(settings)
                 },
                 reloadAsset:
                 { [weak self] in
@@ -381,16 +371,27 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             else
             {
                 let reconstructor = try BodyMeshProviderResources.meshReconstructor()
-                try bodyMeshGeometry.replaceMeshes(
-                    from: selectedPeople,
-                    expectedBodyCount: selectedPeople.count
-                )
-                { indexedPerson in
-                    try reconstructor.reconstructMesh(
-                        parameters: indexedPerson.element.meshParameters,
-                        workspace: &reconstructionWorkspace,
-                        includeLocalVertices: false
+                if selectedPeople.allSatisfy({ BodyMeshGeometry.canSkinOnGPU($0.element.meshParameters) })
+                {
+                    try bodyMeshGeometry.replaceSkinnedMeshes(
+                        from: selectedPeople.lazy.map(\.element.meshParameters),
+                        reconstructor: reconstructor,
+                        workspace: &blendShapeWorkspace
                     )
+                }
+                else
+                {
+                    try bodyMeshGeometry.replaceMeshes(
+                        from: selectedPeople,
+                        expectedBodyCount: selectedPeople.count
+                    )
+                    { indexedPerson in
+                        try reconstructor.reconstructMesh(
+                            parameters: indexedPerson.element.meshParameters,
+                            workspace: &reconstructionWorkspace,
+                            includeLocalVertices: false
+                        )
+                    }
                 }
             }
 
@@ -544,10 +545,9 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private func reloadAsset()
     {
         invalidateLoadedAsset()
-        if let assetFolderURL = providerSettings.assetFolderURL
-        {
-            updateRuntimeStatus(.awaitingLoad(assetFolderURL: assetFolderURL))
-        }
+        let status = providerSettings.assetFolderURL.map(BodyMeshProviderRuntimeStatus.awaitingLoad)
+            ?? .noAssetSelected
+        updateRuntimeStatus(status)
         markDirty()
     }
 

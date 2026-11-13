@@ -177,6 +177,57 @@ final class CoMotionMeshReconstructorTests: XCTestCase
         }
     }
 
+    func testPackedJointInfluencesReproduceCPUReconstruction() throws
+    {
+        let constantsURL = repositoryURL.appending(path: "LocalAssets/CoMotionMeshConstants.bin")
+        let reconstructor = try CoMotionMeshReconstructor(
+            constantsData: Data(contentsOf: constantsURL, options: .mappedIfSafe)
+        )
+        let archive = try CoMotionArchiveReader(
+            directoryURL: repositoryURL.appending(path: "FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A")
+        )
+        guard case let .available(people) = try archive.frameAtIndex(559).status,
+              let person = people.first
+        else { return XCTFail("Expected an available body in the included archive") }
+
+        let parameters = person.meshParameters
+        let mesh = try reconstructor.makeSkinningMesh()
+        var workspace = CoMotionBlendShapeWorkspace()
+        let positions = reconstructor.blendShapePositions(parameters: parameters, workspace: &workspace)
+        let reference = try reconstructor.reconstructMesh(parameters: parameters)
+        let translation = SIMD3(parameters.translation[0], parameters.translation[1], parameters.translation[2])
+        var maxPositionError: Float = 0
+        var maxNormalError: Float = 0
+        for vertexIndex in reference.vertices.indices
+        {
+            let offset = vertexIndex * 3
+            let position = SIMD4(positions[offset], positions[offset + 1], positions[offset + 2], 1)
+            let normal = SIMD4(mesh.canonicalNormals[vertexIndex], 0)
+            var skinnedPosition = SIMD4<Float>.zero
+            var skinnedNormal = SIMD4<Float>.zero
+            for influence in 0 ..< 4
+            {
+                let joint = Int(mesh.jointIndices[vertexIndex][influence])
+                let weight = mesh.jointWeights[vertexIndex][influence]
+                let transform = parameters.skinningTransforms[(joint * 16) ..< ((joint + 1) * 16)]
+                for row in 0 ..< 4
+                {
+                    let start = transform.startIndex + row * 4
+                    let values = SIMD4(transform[start], transform[start + 1], transform[start + 2], transform[start + 3])
+                    skinnedPosition[row] += weight * simd_dot(values, position)
+                    skinnedNormal[row] += weight * simd_dot(values, normal)
+                }
+            }
+            let reconstructedPosition = simd_make_float3(skinnedPosition) / skinnedPosition.w + translation
+            let reconstructedNormal = simd_normalize(simd_make_float3(skinnedNormal))
+            maxPositionError = max(maxPositionError, simd_distance(reconstructedPosition, reference.vertices[vertexIndex]))
+            maxNormalError = max(maxNormalError, simd_distance(reconstructedNormal, reference.normals[vertexIndex]))
+        }
+        XCTAssertEqual(mesh.triangleIndices, reference.triangleIndices)
+        XCTAssertLessThan(maxPositionError, 0.0001)
+        XCTAssertLessThan(maxNormalError, 0.0001)
+    }
+
     private func makeConstantsDataWithValidHeader() -> Data
     {
         var constantsData = Data(
