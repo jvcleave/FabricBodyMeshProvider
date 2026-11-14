@@ -228,18 +228,9 @@ user control for playback speed.
 
 ### Switchable characters
 
-Add model selection to the node's settings independently of the motion
-archive. Keep the built-in CoMotion surface as the default. A prepared
-character asset should provide its bind geometry, joint mapping, and
-inverse-bind transforms so it can follow the same archive pose at the same
-time. Character changes should invalidate model resources without reopening
-the archive or changing its playback controls.
-
-MessScene's dressed character path shares one posed vertex buffer across
-surfaces with different index buffers and materials. Start with one imported
-surface through the existing Geometry output. For dressed models, evaluate
-a renderable Object output that carries Satin submeshes and their materials,
-as Fabric's model loader does.
+The [USDZ update plan](USDZ_CHARACTER_MODEL_UPDATE_PLAN.md) defines the 2.0
+renderable and the independent model and motion archive selections. The Satin
+weight limit below applies to that design.
 
 #### Satin's four-influence limit
 

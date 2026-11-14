@@ -5,10 +5,10 @@ reference. Follow [AGENTS.md](../../AGENTS.md) for engineering guidance.
 
 ## Implementation
 
-The [plug-in plan](todos/PLUG_IN_PLAN.md) covers the CoMotion archive contract,
-the core package and Fabric node boundaries, and the switchable-character
-work. It records the effect of Satin's four-influence limit on imported
-characters.
+- The [plug-in plan](todos/PLUG_IN_PLAN.md) covers the CoMotion archive contract,
+  the core package and Fabric node boundaries, and Satin's four-influence limit.
+- The [USDZ update plan](todos/USDZ_CHARACTER_MODEL_UPDATE_PLAN.md) defines
+  Creator model selection, live CoMotion retargeting, and the 2.0 renderable.
 
 ## Verification
 
