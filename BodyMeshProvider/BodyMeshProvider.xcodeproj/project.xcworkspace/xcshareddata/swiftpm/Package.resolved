@@ -1,0 +1,23 @@
+{
+  "originHash" : "cf31df8849b01e4e62b27d6d338eee1749327b0442aa2252e6e2bae787650576",
+  "pins" : [
+    {
+      "identity" : "messusdzimportkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jvcleave/MessUSDZImportKIt.git",
+      "state" : {
+        "revision" : "dfd0042a5b9af398afa87526a0ddd251ea410811"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
+      }
+    }
+  ],
+  "version" : 3
+}

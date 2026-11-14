@@ -12,6 +12,7 @@ public final class BodyMeshProviderPlugin: NSObject, FabricPlugin
     {
         [
             BodyMeshProviderNode.self,
+            BodyMeshCharacterNode.self,
             BodyMeshIntrinsicCameraNode.self,
         ]
     }

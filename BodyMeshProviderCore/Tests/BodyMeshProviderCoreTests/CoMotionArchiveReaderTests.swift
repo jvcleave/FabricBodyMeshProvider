@@ -45,6 +45,8 @@ final class CoMotionArchiveReaderTests: XCTestCase
         XCTAssertEqual(archiveReader.frameIndex(time: -1.0 / 60.0, loop: true), 1)
         XCTAssertEqual(archiveReader.frameIndex(time: -1, loop: false), 0)
         XCTAssertEqual(archiveReader.frameIndex(time: 10, loop: false), 1)
+        XCTAssertEqual(archiveReader.frameIndex(time: .greatestFiniteMagnitude, loop: false), 1)
+        XCTAssertTrue((0 ..< archiveReader.frameCount).contains(archiveReader.frameIndex(time: .greatestFiniteMagnitude, loop: true)))
     }
 
     func testRejectsUnsupportedFormatVersion() throws

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		B0D100000000000000000005 /* BodyMeshProviderCore in Frameworks */ = {isa = PBXBuildFile; productRef = B0D100000000000000000007 /* BodyMeshProviderCore */; };
+		B0D10000000000000000000B /* MessUSDZImportKit in Frameworks */ = {isa = PBXBuildFile; productRef = B0D10000000000000000000A /* MessUSDZImportKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B0D100000000000000000005 /* BodyMeshProviderCore in Frameworks */,
+				B0D10000000000000000000B /* MessUSDZImportKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +89,7 @@
 			name = BodyMeshProvider;
 			packageProductDependencies = (
 				B0D100000000000000000007 /* BodyMeshProviderCore */,
+				B0D10000000000000000000A /* MessUSDZImportKit */,
 			);
 			productName = BodyMeshProvider;
 			productReference = 035DF3B1304CC1940090D775 /* BodyMeshProvider.fabricplugin */;
@@ -117,6 +120,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B0D100000000000000000006 /* XCLocalSwiftPackageReference "../BodyMeshProviderCore" */,
+				B0D100000000000000000009 /* XCRemoteSwiftPackageReference "MessUSDZImportKIt" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 035DF3B2304CC1940090D775 /* Products */;
@@ -167,6 +171,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
 			);
 			name = "Install Fabric Plugin";
 			outputFileListPaths = (
@@ -329,6 +334,7 @@
 		035DF3B6304CC1940090D775 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -347,8 +353,8 @@
 					"$(inherited)",
 					"@loader_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 2.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -462,6 +468,7 @@
 		035DF3B7304CC1940090D775 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -480,8 +487,8 @@
 					"$(inherited)",
 					"@loader_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 2.0;
 				OTHER_CODE_SIGN_FLAGS = "--deep";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -622,10 +629,26 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		B0D100000000000000000009 /* XCRemoteSwiftPackageReference "MessUSDZImportKIt" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jvcleave/MessUSDZImportKIt.git";
+			requirement = {
+				kind = revision;
+				revision = dfd0042a5b9af398afa87526a0ddd251ea410811;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		B0D100000000000000000007 /* BodyMeshProviderCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = BodyMeshProviderCore;
+		};
+		B0D10000000000000000000A /* MessUSDZImportKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B0D100000000000000000009 /* XCRemoteSwiftPackageReference "MessUSDZImportKIt" */;
+			productName = MessUSDZImportKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

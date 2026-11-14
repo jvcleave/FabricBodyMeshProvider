@@ -37,10 +37,8 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private var archiveReader: CoMotionArchiveReader?
     private var attemptedAssetFolderURLString: String?
     private var assetLoadError: (any Error)?
-    private var lastEvaluationKey: EvaluationKey?
+    private var lastEvaluationKey: BodyMeshFrameSelection?
     private var hasPublishedGeometry = false
-    private var reconstructionWorkspace = CoMotionMeshReconstructionWorkspace()
-    private var blendShapeWorkspace = CoMotionBlendShapeWorkspace()
     private var runtimeStatus = BodyMeshProviderRuntimeStatus.noAssetSelected
     private weak var settingsModel: BodyMeshProviderSettingsModel?
 
@@ -49,147 +47,9 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         case providerSettings
     }
 
-    private struct EvaluationKey: Equatable
-    {
-        let frameIndex: Int
-        let confidenceThreshold: Float
-        let maximumBodyCount: Int
-    }
-
     public override class func registerPorts(context: Context) -> [(name: String, port: Fabric.Port)]
     {
-        let providerInputs: [(name: String, port: Fabric.Port)] =
-        [
-            (
-                "inputTime",
-                ParameterPort(
-                    parameter: FloatParameter(
-                        "Time",
-                        0,
-                        .inputfield,
-                        "Playback time in seconds; graph time is used when this inlet is unconnected"
-                    )
-                )
-            ),
-            (
-                "inputLoop",
-                ParameterPort(
-                    parameter: BoolParameter(
-                        "Loop",
-                        true,
-                        .toggle,
-                        "Wrap playback at the end of the asset"
-                    )
-                )
-            ),
-            (
-                "inputPlaybackRate",
-                ParameterPort(
-                    parameter: FloatParameter(
-                        "Playback Rate",
-                        1,
-                        .inputfield,
-                        "Graph-time playback multiplier; ignored when Time is connected"
-                    )
-                )
-            ),
-            (
-                "inputConfidence",
-                ParameterPort(
-                    parameter: FloatParameter(
-                        "Confidence",
-                        0.2,
-                        0.05,
-                        1,
-                        .slider,
-                        "Minimum confidence required to output a detected body"
-                    )
-                )
-            ),
-            (
-                "inputMaximumBodies",
-                ParameterPort(
-                    parameter: IntParameter(
-                        "Maximum Bodies",
-                        1,
-                        1,
-                        8,
-                        .inputfield,
-                        "Maximum number of highest-confidence bodies to merge into the geometry"
-                    )
-                )
-            ),
-        ]
-
-        let providerOutputs: [(name: String, port: Fabric.Port)] =
-        [
-            (
-                "outputDetectedBodies",
-                NodePort<Int>(
-                    name: "Detected Bodies",
-                    kind: .Outlet,
-                    description: "Number of bodies stored in the current frame before filtering"
-                )
-            ),
-            (
-                "outputBodies",
-                NodePort<Int>(
-                    name: "Output Bodies",
-                    kind: .Outlet,
-                    description: "Number of bodies included in the geometry after filtering"
-                )
-            ),
-            (
-                "outputCurrentFrame",
-                NodePort<Int>(
-                    name: "Current Frame",
-                    kind: .Outlet,
-                    description: "Zero-based archive frame currently selected"
-                )
-            ),
-            (
-                "outputFrameRate",
-                NodePort<Float>(
-                    name: "Frame Rate",
-                    kind: .Outlet,
-                    description: "Encoded frame rate of the selected asset"
-                )
-            ),
-            (
-                "outputFrameCount",
-                NodePort<Int>(
-                    name: "Frame Count",
-                    kind: .Outlet,
-                    description: "Total number of archive frames"
-                )
-            ),
-            (
-                "outputDuration",
-                NodePort<Float>(
-                    name: "Duration",
-                    kind: .Outlet,
-                    description: "Asset playback duration in seconds"
-                )
-            ),
-            (
-                "outputFrameAvailable",
-                NodePort<Bool>(
-                    name: "Frame Available",
-                    kind: .Outlet,
-                    description: "True when at least one body passed filtering in the current frame"
-                )
-            ),
-            (
-                "outputSourceSize",
-                NodePort<simd_float2>(
-                    name: "Source Size",
-                    kind: .Outlet,
-                    description: "Encoded source width and height"
-                )
-            ),
-        ]
-
-        return providerInputs + super.registerPorts(context: context) + providerOutputs
+        BodyMeshPlaybackPorts.inputs() + super.registerPorts(context: context) + BodyMeshPlaybackPorts.outputs()
     }
 
     public var inputTime: ParameterPort<Float> { port(named: "inputTime") }
@@ -310,28 +170,9 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                 return
             }
 
-            let playbackTime: TimeInterval
-            if inputTime.connectedOutlets.isEmpty
-            {
-                playbackTime = executionInfo.timing.time * TimeInterval(inputPlaybackRate.value ?? 1)
-            }
-            else
-            {
-                playbackTime = TimeInterval(inputTime.value ?? 0)
-            }
-
-            let frameIndex = archiveReader.frameIndex(
-                time: playbackTime,
-                loop: inputLoop.value ?? true
-            )
+            let evaluationKey = BodyMeshFrameSelection(node: self, graphTime: executionInfo.timing.time, archive: archiveReader)
+            let frameIndex = evaluationKey.frameIndex
             requestedFrameIndex = frameIndex
-            let confidenceThreshold = min(max(inputConfidence.value ?? 0.2, 0.05), 1)
-            let maximumBodyCount = min(max(inputMaximumBodies.value ?? 1, 1), 8)
-            let evaluationKey = EvaluationKey(
-                frameIndex: frameIndex,
-                confidenceThreshold: confidenceThreshold,
-                maximumBodyCount: maximumBodyCount
-            )
 
             guard evaluationKey != lastEvaluationKey else
             {
@@ -352,17 +193,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                     people = []
             }
 
-            let selectedPeople = people.enumerated()
-                .filter { $0.element.confidence > confidenceThreshold }
-                .sorted
-                { firstPerson, secondPerson in
-                    if firstPerson.element.confidence == secondPerson.element.confidence
-                    {
-                        return firstPerson.offset < secondPerson.offset
-                    }
-                    return firstPerson.element.confidence > secondPerson.element.confidence
-                }
-                .prefix(maximumBodyCount)
+            let selectedPeople = evaluationKey.select(people)
 
             if selectedPeople.isEmpty
             {
@@ -371,28 +202,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             else
             {
                 let reconstructor = try BodyMeshProviderResources.meshReconstructor()
-                if selectedPeople.allSatisfy({ BodyMeshGeometry.canSkinOnGPU($0.element.meshParameters) })
-                {
-                    try bodyMeshGeometry.replaceSkinnedMeshes(
-                        from: selectedPeople.lazy.map(\.element.meshParameters),
-                        reconstructor: reconstructor,
-                        workspace: &blendShapeWorkspace
-                    )
-                }
-                else
-                {
-                    try bodyMeshGeometry.replaceMeshes(
-                        from: selectedPeople,
-                        expectedBodyCount: selectedPeople.count
-                    )
-                    { indexedPerson in
-                        try reconstructor.reconstructMesh(
-                            parameters: indexedPerson.element.meshParameters,
-                            workspace: &reconstructionWorkspace,
-                            includeLocalVertices: false
-                        )
-                    }
-                }
+                try bodyMeshGeometry.replaceBodies(selectedPeople, reconstructor: reconstructor)
             }
 
             outputDetectedBodies.send(people.count)

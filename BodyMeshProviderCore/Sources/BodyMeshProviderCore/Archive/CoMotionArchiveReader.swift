@@ -371,12 +371,17 @@ public struct CoMotionArchiveReader: Sendable
     public func frameIndex(time: TimeInterval, loop: Bool) -> Int
     {
         guard time.isFinite else { return 0 }
-        let requestedFrame = Int((time * TimeInterval(metadata.encodedFrameRate)).rounded(.down))
+        let frameRate = TimeInterval(metadata.encodedFrameRate)
+        let requestedFrame = (time * frameRate).rounded(.down)
         if loop
         {
-            return ((requestedFrame % frameCount) + frameCount) % frameCount
+            let phase = requestedFrame.isFinite
+                ? requestedFrame.truncatingRemainder(dividingBy: Double(frameCount))
+                : (time.truncatingRemainder(dividingBy: duration) * frameRate).rounded(.down)
+            let wrapped = Int(phase) % frameCount
+            return wrapped < 0 ? wrapped + frameCount : wrapped
         }
-        return min(max(requestedFrame, 0), frameCount - 1)
+        return Int(min(max(requestedFrame, 0), Double(frameCount - 1)))
     }
 }
 

@@ -44,9 +44,10 @@ earlier TCHR v2 proposal and uses Creator's existing USDZ export directly.
   for Intrinsic Camera. A frame with zero selected detections draws zero
   characters.
 - Keep **Built-in** as a model choice. Persist the model choice and archive
-  as independent settings using external file URLs for 2.0. Fabric's movie
-  export clones the graph without its document base URL, so validate those
-  references on both reopen and export. Re-selecting a source retries that
+  as independent settings. Use a relative archive reference in the shipped
+  sample. Resolve it from the document directory and serialize the resulting
+  file URL when making Fabric's movie export clone. Picked files use absolute
+  file URLs. Validate those references on reopen and export. Re-selecting a source retries that
   source. A missing, invalid, or unsupported selection clears the rendered
   character and uses Fabric's recoverable error path. A swap at a fixed **Time**
   reposes at that time on the next graph evaluation. A paused Editor applies
@@ -73,22 +74,19 @@ vertex buffer, including one surface with a cutout. Satin's vertex skinning
 supports four influences per vertex. Use plug-in Metal compute to blend the full
 influence lists and pass posed positions and normals to Satin meshes with vertex
 skinning disabled. Confirm buffer layout, command ordering, and the cutout in the
-Editor. If Satin's stock material misses the exported alpha threshold in a
-required draw pass, supply that material in the plug-in. Prove source preparation
-on the first frame of a cold movie export using the same model.
+Editor. Use Satin's PBR shader chunks and a plug-in shadow pipeline so the
+visible surface and shadow map use the same texture binding and authored alpha
+threshold. Prove source preparation on the first frame of a cold movie export
+using the same model.
 [Fabric graph render order](https://github.com/Fabric-Project/Fabric/blob/c1da66398ae4b28c266e0b3d4ef456d60c97f171/Fabric/Graph/GraphRenderer.swift#L342-L375) [Satin skinning shader](https://github.com/Fabric-Project/Satin/blob/ff825e4945ca19277355eda69831b9b19aad1533/Sources/Satin/Pipelines/Satin/Skinning.metal#L19-L28)
 
 ### 2. Retarget the selected archive frame
 
-Share the Creator-rig validation and prepared-character retargeter through
-renderer-independent code. Expose typed rig construction in the standalone
-character runtime. The current `MessCharacterKit` 0.1.0 pin constructs assets
-from bytes, while the MessScene USDZ adapter builds them from typed values.
-Extract the common bind data and surface preparation from MessScene's adapter.
-Return a typed rig and surface data that both hosts can consume. MessScene can
-serialize those values for its library. Keep Fabric's archive reader, settings,
-and graph/GPU adapter in the plug-in.
-[Published character runtime](https://github.com/jvcleave/MessCharacterKit/blob/f5ebbad676175845c844d36d3852cf8221af77f8/Sources/MessCharacterKit/PreparedCharacterAsset.swift#L47) [MessScene rig and surface adapter](https://github.com/jvcleave/MessSceneApp/blob/5e236e3510dcb3aff493e0d2e3a784439100e464/Packages/MessSceneKit/Sources/MessSceneCore/Models/SceneBodyMeshUSDZ.swift)
+Keep typed Creator rig validation and the calibrated retargeter in
+`BodyMeshProviderCore`. Port the existing retargeter from MessScene in Fabric's
+Y-up coordinates and verify equivalent palettes and placement. The plug-in
+adapts the USDZ importer's bind data and owns settings and GPU presentation.
+[Retargeting reference](https://github.com/jvcleave/MessCharacterKit/blob/f5ebbad676175845c844d36d3852cf8221af77f8/Sources/MessCharacterKit/PreparedCharacterAsset.swift#L153) [MessScene rig and surface adapter](https://github.com/jvcleave/MessSceneApp/blob/5e236e3510dcb3aff493e0d2e3a784439100e464/Packages/MessSceneKit/Sources/MessSceneCore/Models/SceneBodyMeshUSDZ.swift)
 
 Use the archive's 24 joint transforms to compute one palette per selected
 body. Preserve the Human's authored proportions and the retargeter's pelvis
@@ -109,7 +107,8 @@ Publish only the current model request, reuse static mesh data across draws, and
 keep in-flight GPU buffers alive through completion. Fabric starts the cloned
 export graph synchronously and renders the first frame immediately afterward.
 Carry the preparation path proven in the bundle spike into the new node. Use
-the sample to show both selectors and the Intrinsic Camera connection.
+the sample to show both selectors and the Intrinsic Camera connection. Start
+it with Built-in and the published `24sectest` archive beside the graph.
 [Fabric export startup](https://github.com/Fabric-Project/Fabric/blob/c1da66398ae4b28c266e0b3d4ef456d60c97f171/Fabric/Graph/GraphExportRenderer.swift#L64-L110) [Plug-in sample workflow](../../../README.md#use-in-fabric)
 
 ## Acceptance
@@ -145,3 +144,7 @@ CoMotion capture to exercise posing.
 ```text
 ~/Documents/MessCharacterCreator/EXPORTS/A5D810A8-A068-4134-9EBF-5696788DFE30/usdz/EFDFBADC-6A00-4828-8D6A-38296861E64E/model.usdz
 ```
+
+The supplied copy for local verification is at
+`~/Downloads/EFDFBADC-6A00-4828-8D6A-38296861E64E/model.usdz`. See the
+[milestone handoff](../handoffs/usdz-character-model.md) for verification.

@@ -23,6 +23,8 @@ enum BodyMeshGeometryError: LocalizedError
 
 final class BodyMeshGeometry: SatinGeometry
 {
+    private var reconstructionWorkspace = CoMotionMeshReconstructionWorkspace()
+    private var blendShapeWorkspace = CoMotionBlendShapeWorkspace()
     private var reusableVertices: [SatinVertex] = []
     private var cachedTrianglesByBodyCount: [Int: [TriangleIndices]] = [:]
     private var preparedGeometryData = createGeometryData()
@@ -37,7 +39,31 @@ final class BodyMeshGeometry: SatinGeometry
         freeGeometryData(&preparedGeometryData)
     }
 
-    func replaceMeshes<Source: Sequence>(
+    func replaceBodies(
+        _ people: [CoMotionFramePerson],
+        reconstructor: CoMotionMeshReconstructor
+    ) throws
+    {
+        if people.allSatisfy({ Self.canSkinOnGPU($0.meshParameters) })
+        {
+            try replaceSkinnedMeshes(
+                from: people.lazy.map(\.meshParameters),
+                reconstructor: reconstructor
+            )
+        }
+        else
+        {
+            try replaceMeshes(from: people, expectedBodyCount: people.count) { person in
+                try reconstructor.reconstructMesh(
+                    parameters: person.meshParameters,
+                    workspace: &reconstructionWorkspace,
+                    includeLocalVertices: false
+                )
+            }
+        }
+    }
+
+    private func replaceMeshes<Source: Sequence>(
         from sources: Source,
         expectedBodyCount: Int,
         reconstructMesh: (Source.Element) throws -> CoMotionBodyMesh
@@ -99,7 +125,7 @@ final class BodyMeshGeometry: SatinGeometry
 
     /// Archive transforms are row-major affine matrices. Projective data still
     /// needs the CPU path's per-vertex homogeneous divide.
-    static func canSkinOnGPU(_ parameters: CoMotionMeshParameters) -> Bool
+    private static func canSkinOnGPU(_ parameters: CoMotionMeshParameters) -> Bool
     {
         let matrices = parameters.skinningTransforms
         for row in stride(from: 12, to: matrices.count, by: 16)
@@ -111,10 +137,9 @@ final class BodyMeshGeometry: SatinGeometry
         return true
     }
 
-    func replaceSkinnedMeshes<People: Collection>(
+    private func replaceSkinnedMeshes<People: Collection>(
         from people: People,
-        reconstructor: CoMotionMeshReconstructor,
-        workspace: inout CoMotionBlendShapeWorkspace
+        reconstructor: CoMotionMeshReconstructor
     ) throws where People.Element == CoMotionMeshParameters
     {
         guard people.isEmpty == false else
@@ -136,7 +161,7 @@ final class BodyMeshGeometry: SatinGeometry
         var frameBounds = createBounds()
         for parameters in people
         {
-            let positions = reconstructor.blendShapePositions(parameters: parameters, workspace: &workspace)
+            let positions = reconstructor.blendShapePositions(parameters: parameters, workspace: &blendShapeWorkspace)
             var bodyBounds = createBounds()
             for vertexIndex in 0 ..< vertexCount
             {

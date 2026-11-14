@@ -1,0 +1,137 @@
+#include "Satin/PbrConstants.metal"
+#include "Library/Pbr/Pbr.metal"
+#include "Includes/FragmentOutput.metal"
+
+typedef struct
+{
+#include "Chunks/StandardUniforms.metal"
+    float4 textureScale;
+    float4 textureBias;
+    float alphaThreshold;
+} CharacterTexturedUniforms;
+
+typedef struct
+{
+    float4 position [[position]];
+    float2 texcoord;
+    float3 normal;
+    float3 worldPosition;
+    float3 cameraPosition;
+#ifdef OUTPUT_VELOCITY
+    float4 currentClipPos;
+    float4 previousClipPos;
+#endif
+} CharacterTexturedVertexData;
+
+vertex CharacterTexturedVertexData characterTexturedVertex(
+    Vertex in [[stage_in]],
+    // inject instancing args
+    ushort amp_id [[amplification_id]],
+    constant VertexUniforms *vertexUniforms [[buffer(VertexBufferVertexUniforms)]])
+{
+#if defined(INSTANCING)
+    const float4x4 model = instanceUniforms[instanceID].modelMatrix;
+    const float3x3 normalMatrix = instanceUniforms[instanceID].normalMatrix;
+#else
+    const float4x4 model = vertexUniforms[amp_id].modelMatrix;
+    const float3x3 normalMatrix = vertexUniforms[amp_id].normalMatrix;
+#endif
+    const float4 worldPosition = model * SATIN_SKIN_POSITION(in);
+    CharacterTexturedVertexData out;
+    out.position = vertexUniforms[amp_id].viewProjectionMatrix * worldPosition;
+    out.texcoord = in.texcoord;
+    out.normal = normalMatrix * SATIN_SKIN_NORMAL(in);
+    out.worldPosition = worldPosition.xyz;
+    out.cameraPosition = vertexUniforms[amp_id].worldCameraPosition.xyz;
+#ifdef OUTPUT_VELOCITY
+    out.currentClipPos = out.position;
+    out.previousClipPos = SATIN_PREVIOUS_CLIP_POSITION(in);
+#endif
+    return out;
+}
+
+static float4 sampleCharacterTexture(
+    float2 texcoord,
+    constant CharacterTexturedUniforms &uniforms,
+    texture2d<float> albedo,
+    sampler albedoSampler)
+{
+    // Creator UVs are bottom-left. The importer supplies top-left image rows.
+    const float2 uv = float2(texcoord.x, 1.0f - texcoord.y);
+    float4 color = albedo.sample(albedoSampler, uv) * uniforms.textureScale + uniforms.textureBias;
+    if (color.a < uniforms.alphaThreshold) discard_fragment();
+    return color;
+}
+
+fragment FragmentOutput characterTexturedFragment(
+    CharacterTexturedVertexData in [[stage_in]],
+    // inject lighting args
+#if defined(PROJECTOR_COUNT)
+    constant float4x4 *projectorMatrices [[buffer(FragmentBufferProjectorMatrices)]],
+    constant float4x4 *projectorTransforms [[buffer(FragmentBufferProjectorTransforms)]],
+    array<texture2d<float>, PROJECTOR_COUNT> projectorTextures [[texture(FragmentTextureProjector0)]],
+#endif
+    // inject direct shadow args
+#include "Chunks/PbrTextures.metal"
+    constant CharacterTexturedUniforms &uniforms [[buffer(FragmentBufferMaterialUniforms)]],
+    sampler albedoSampler [[sampler(FragmentSamplerCustom0)]]
+    SATIN_ALPHA_OIT_FRAGMENT_DATA)
+{
+    const float4 color = sampleCharacterTexture(in.texcoord, uniforms, baseColorMap, albedoSampler);
+#if defined(LIGHTING)
+    float4 outColor;
+#include "Chunks/PixelInfoInit.metal"
+    pixel.material.baseColor = color.rgb;
+    pixel.material.alpha = 1.0f;
+#include "Chunks/PbrInit.metal"
+
+    SurfaceOutput surface;
+#include "Chunks/PixelInfoSurfaceOutput.metal"
+#if defined(DEFERRED_GEOMETRY)
+    outColor = float4(pbrTonemap(pixel), pixel.material.alpha);
+#else
+#include "Chunks/PbrDirectLighting.metal"
+#include "Chunks/PbrInDirectLighting.metal"
+#include "Chunks/PbrTonemap.metal"
+#endif
+
+    return buildFragmentOutput(surface, half4(outColor)
+#ifdef OUTPUT_VELOCITY
+        , in.currentClipPos, in.previousClipPos
+#endif
+        SATIN_ALPHA_OIT_FORWARD_ARGS);
+#else
+    return buildColorFragmentOutput(half4(half3(color.rgb), 1.0h) SATIN_ALPHA_OIT_FORWARD_ARGS);
+#endif
+}
+
+typedef struct
+{
+    float4 position [[position]];
+    float2 texcoord;
+} CharacterTexturedShadowVertexData;
+
+vertex CharacterTexturedShadowVertexData characterTexturedShadowVertex(
+    Vertex in [[stage_in]],
+    // inject instancing args
+    constant VertexUniforms &vertexUniforms [[buffer(VertexBufferVertexUniforms)]])
+{
+    const float4 position = SATIN_SKIN_POSITION(in);
+    CharacterTexturedShadowVertexData out;
+#if defined(INSTANCING)
+    out.position = vertexUniforms.viewProjectionMatrix * instanceUniforms[instanceID].modelMatrix * position;
+#else
+    out.position = vertexUniforms.modelViewProjectionMatrix * position;
+#endif
+    out.texcoord = in.texcoord;
+    return out;
+}
+
+fragment void characterTexturedShadowFragment(
+    CharacterTexturedShadowVertexData in [[stage_in]],
+    constant CharacterTexturedUniforms &uniforms [[buffer(FragmentBufferMaterialUniforms)]],
+    texture2d<float> albedo [[texture(PBRTextureBaseColor)]],
+    sampler albedoSampler [[sampler(FragmentSamplerCustom0)]])
+{
+    sampleCharacterTexture(in.texcoord, uniforms, albedo, albedoSampler);
+}
