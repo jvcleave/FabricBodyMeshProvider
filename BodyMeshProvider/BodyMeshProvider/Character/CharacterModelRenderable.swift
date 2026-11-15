@@ -11,16 +11,23 @@ final class CharacterModelRenderable
     private struct Surface
     {
         let sourcePath: String
+        let materialPath: String
         let skinning: CharacterModelSkinning
         let topology: CharacterModelGeometry.Topology
         let material: Material
         let isDoubleSided: Bool
     }
 
+    private struct SurfaceInstance
+    {
+        let mesh: Mesh
+        let geometry: CharacterModelGeometry
+    }
+
     private struct Body
     {
         let object: Object
-        let geometries: [CharacterModelGeometry]
+        let surfaces: [SurfaceInstance]
     }
 
     let object: Object
@@ -31,6 +38,7 @@ final class CharacterModelRenderable
     private var pose: [Pose] = []
     private var poseCompletion: OSAllocatedUnfairLock<Bool>?
     private var bodies: [Body] = []
+    private var overrides = CharacterOverrides()
 
     convenience init(context: Context, sourceURL: URL) throws
     {
@@ -47,6 +55,7 @@ final class CharacterModelRenderable
         surfaces = try model.surfaces.map { surface in
             try Surface(
                 sourcePath: surface.sourcePath,
+                materialPath: surface.material.path,
                 skinning: CharacterModelSkinning(device: context.device, skin: surface.skin),
                 topology: CharacterModelGeometry.Topology(mesh: surface.geometry),
                 material: Self.makeMaterial(surface, model: model, context: context),
@@ -79,15 +88,41 @@ final class CharacterModelRenderable
         object.visible = false
     }
 
+    func setOverrides(_ overrides: CharacterOverrides)
+    {
+        guard self.overrides != overrides else { return }
+        self.overrides = overrides
+        for body in bodies
+        {
+            for (surface, instance) in zip(surfaces, body.surfaces)
+            {
+                let appearance = appearance(for: surface)
+                if instance.mesh.visible != appearance.visible { instance.mesh.visible = appearance.visible }
+                if instance.mesh.material !== appearance.material
+                {
+                    instance.mesh.material = appearance.material
+                    instance.mesh.receiveShadow = appearance.material.lighting
+                }
+            }
+        }
+    }
+
+    private func appearance(for surface: Surface) -> (visible: Bool, material: Material)
+    {
+        let visible = overrides.meshVisibility[surface.sourcePath] != false
+            && overrides.materialVisibility[surface.materialPath] != false
+        return (visible, overrides.materials[surface.materialPath] ?? surface.material)
+    }
+
     var captureBounds: Bounds?
     {
         guard object.visible, !pose.isEmpty else { return nil }
         var bounds = createBounds()
         for body in bodies.prefix(pose.count)
         {
-            for geometry in body.geometries
+            for surface in body.surfaces where surface.mesh.visible
             {
-                bounds = mergeBounds(bounds, transformBounds(geometry.bounds, body.object.localMatrix))
+                bounds = mergeBounds(bounds, transformBounds(surface.geometry.bounds, body.object.localMatrix))
             }
         }
         return bounds
@@ -167,9 +202,9 @@ final class CharacterModelRenderable
             }
             else
             {
-                for (surfaceIndex, geometry) in bodies[bodyIndex].geometries.enumerated()
+                for (surfaceIndex, surface) in bodies[bodyIndex].surfaces.enumerated()
                 {
-                    geometry.apply(body.outputs[surfaceIndex], bounds: body.bounds[surfaceIndex])
+                    surface.geometry.apply(body.outputs[surfaceIndex], bounds: body.bounds[surfaceIndex])
                 }
             }
             let instance = bodies[bodyIndex]
@@ -183,19 +218,20 @@ final class CharacterModelRenderable
     private func makeBody(_ body: PreparedBody) -> Body
     {
         let instance = Object(context: context, label: "Character")
-        let geometries = surfaces.enumerated().map { surfaceIndex, surface in
+        let instances = surfaces.enumerated().map { surfaceIndex, surface in
             let geometry = CharacterModelGeometry(context: context, topology: surface.topology)
             geometry.apply(body.outputs[surfaceIndex], bounds: body.bounds[surfaceIndex])
-            let mesh = Mesh(context: context, label: surface.sourcePath, geometry: geometry, material: surface.material)
+            let appearance = appearance(for: surface)
+            let mesh = Mesh(context: context, label: surface.sourcePath, geometry: geometry, material: appearance.material, visible: appearance.visible)
             mesh.doubleSided = surface.isDoubleSided
             mesh.cullMode = surface.isDoubleSided ? .none : .back
             mesh.castShadow = true
-            mesh.receiveShadow = surface.material.lighting
+            mesh.receiveShadow = appearance.material.lighting
             instance.add(mesh)
-            return geometry
+            return SurfaceInstance(mesh: mesh, geometry: geometry)
         }
         object.add(instance)
-        return Body(object: instance, geometries: geometries)
+        return Body(object: instance, surfaces: instances)
     }
 
     private static func makeMaterial(

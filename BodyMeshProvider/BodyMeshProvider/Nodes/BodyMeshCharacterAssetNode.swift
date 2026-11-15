@@ -73,7 +73,34 @@ public final class BodyMeshCharacterAssetNode: Node
             let section = CharacterModelSettingsSection(modelURL: modelURL, allowsBuiltIn: false) { [weak self] url in
                 self?.setSettings(Settings(characterModelURL: url))
             }
-            return AnyView(Form { section }.formStyle(.grouped))
+            return AnyView(Form {
+                section
+                Button("Add Character Inspector", systemImage: "slider.horizontal.3") { self.addInspector() }
+                    .disabled(graph == nil)
+            }.formStyle(.grouped))
+        }
+    }
+
+    @MainActor private func addInspector()
+    {
+        guard let graph else { return }
+        let output: NodePort<String> = port(named: "outputCharacter")
+        let viewInputs = output.connectedInlets.filter { $0.node is BodyMeshSceneViewNode }
+        let inspector = CharacterInspectorNode(context: context)
+        inspector.offset = CGSize(width: offset.width + 45, height: offset.height - 185 - CGFloat(output.connectedInlets.count) * 75)
+
+        let undo = graph.undoManager
+        undo?.beginUndoGrouping()
+        defer
+        {
+            undo?.endUndoGrouping()
+            undo?.setActionName("Add Character Inspector")
+        }
+        graph.addNode(inspector)
+        guard graph.connect(output, to: inspector.inputCharacter) != nil else { return }
+        if viewInputs.count == 1, let inlet = viewInputs.first
+        {
+            graph.connect(inspector.outputCharacter, to: inlet)
         }
     }
 

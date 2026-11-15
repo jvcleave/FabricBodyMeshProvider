@@ -9,6 +9,8 @@ reference. Follow [AGENTS.md](../../AGENTS.md) for engineering guidance.
   the core package and Fabric node boundaries, and Satin's four-influence limit.
 - The [USDZ update plan](todos/USDZ_CHARACTER_MODEL_UPDATE_PLAN.md) defines
   Creator model selection, live CoMotion retargeting, and the 2.0 renderable.
+- The [Character Inspector update plan](todos/CHARACTER_INSPECTOR_UPDATE_PLAN.md)
+  covers graph-driven visibility and material overrides for mapped USDZ characters.
 
 ## Verification
 

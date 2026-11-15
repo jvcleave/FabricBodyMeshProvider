@@ -10,11 +10,16 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
     public override class var nodeType: Node.NodeType { .Object(objectType: .Mesh) }
     public override class var nodeDescription: String { "Place and pose a selected USDZ character using shared CoMotion frames." }
 
-    private struct ModelRequest: Equatable
+    private struct CharacterSlot
     {
-        let characterA: String?
-        let characterB: String?
-        let directory: URL?
+        let url: URL
+        let overrides: CharacterOverrides
+    }
+
+    private struct PreparedModel
+    {
+        let source: CharacterModelSource
+        let renderable: Result<CharacterModelRenderable, any Error>
     }
 
     private lazy var captureSpace = Object(context: context, label: "Body Mesh Capture Space")
@@ -24,9 +29,9 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
         return root
     }()
 
-    private var modelRequest: ModelRequest?
-    private var modelURLs: [URL?] = []
-    private var preparedModels: [URL: Result<CharacterModelRenderable, any Error>] = [:]
+    private var characterDirectory: URL?
+    private var characters: [CharacterSlot?] = []
+    private var preparedModels: [URL: PreparedModel] = [:]
     private var activeModel: CharacterModelRenderable?
     private var motionFrame: CoMotionFramePayload?
     private var didReadMotionFrame = false
@@ -45,11 +50,11 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
         return [
             (
                 "inputCharacterA",
-                NodePort<String>(name: "Character A", kind: .Inlet, description: "Model reference for index 0")
+                NodePort<PortValue>(name: "Character A", kind: .Inlet, description: "Character asset or inspector output for index 0")
             ),
             (
                 "inputCharacterB",
-                NodePort<String>(name: "Character B", kind: .Inlet, description: "Model reference for index 1")
+                NodePort<PortValue>(name: "Character B", kind: .Inlet, description: "Character asset or inspector output for index 1")
             ),
             (
                 "inputCharacterIndex",
@@ -85,8 +90,8 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
     public override func stopExecution(renderer: GraphRenderer) throws
     {
         captureSpace.removeAll()
-        modelRequest = nil
-        modelURLs.removeAll()
+        characterDirectory = nil
+        characters.removeAll()
         preparedModels.removeAll()
         activeModel = nil
         motionFrame = nil
@@ -157,36 +162,41 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
 
     private func prepareModels() -> (any Error)?
     {
-        let characterA: NodePort<String> = port(named: "inputCharacterA")
-        let characterB: NodePort<String> = port(named: "inputCharacterB")
-        let request = ModelRequest(characterA: characterA.value, characterB: characterB.value, directory: graph?.fileReferenceBaseURL)
-        guard modelRequest != request else { return nil }
-        modelRequest = request
+        let characterA: NodePort<PortValue> = port(named: "inputCharacterA")
+        let characterB: NodePort<PortValue> = port(named: "inputCharacterB")
+        let directory = graph?.fileReferenceBaseURL
+        guard characters.isEmpty || characterDirectory != directory || characterA.valueDidChange || characterB.valueDidChange
+        else { return nil }
+        characterDirectory = directory
 
         var loadError: (any Error)?
-        modelURLs = [request.characterA, request.characterB].map { reference in
-            guard let reference, !reference.isEmpty else { return nil }
-            guard let url = URL(fileReference: reference, relativeTo: request.directory), url.pathExtension.lowercased() == "usdz"
-            else
+        characters = [characterA.value, characterB.value].map { value in
+            do
             {
-                loadError = CharacterModelError.resources("Choose a local mapped Creator USDZ for Body Mesh View.")
+                guard let reference = try CharacterReference(value: value) else { return nil }
+                return CharacterSlot(url: try reference.fileURL(relativeTo: directory), overrides: reference.overrides)
+            }
+            catch
+            {
+                if loadError == nil { loadError = error }
                 return nil
             }
-            return url
         }
-        let requestedURLs = Set(modelURLs.compactMap { $0 })
+        let requestedURLs = Set(characters.compactMap { $0?.url })
+        guard requestedURLs != Set(preparedModels.keys) else { return loadError }
         for url in preparedModels.keys where !requestedURLs.contains(url)
         {
-            if let prepared = preparedModels.removeValue(forKey: url), case let .success(model) = prepared
+            if let prepared = preparedModels.removeValue(forKey: url), case let .success(model) = prepared.renderable
             {
                 captureSpace.remove(model.object)
             }
         }
 
-        for case let url? in modelURLs where preparedModels[url] == nil
+        for case let character? in characters where preparedModels[character.url] == nil
         {
-            let prepared = Result { try CharacterModelRenderable(context: context, sourceURL: url) }
-            preparedModels[url] = prepared
+            let source = CharacterModelSource.source(for: character.url)
+            let prepared = Result { try CharacterModelRenderable(context: context, model: source.load()) }
+            preparedModels[character.url] = PreparedModel(source: source, renderable: prepared)
             switch prepared
             {
                 case .success(let model):
@@ -203,12 +213,15 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
     {
         let indexPort: ParameterPort<Int> = port(named: "inputCharacterIndex")
         let index = indexPort.value ?? 0
-        let url = modelURLs.indices.contains(index) ? modelURLs[index] : nil
-        let model = url.flatMap { try? preparedModels[$0]?.get() }
-        guard activeModel !== model else { return }
-        activeModel?.object.visible = false
-        activeModel = model
-        lastSelection = nil
+        let character = characters.indices.contains(index) ? characters[index] : nil
+        let model = character.flatMap { try? preparedModels[$0.url]?.renderable.get() }
+        if activeModel !== model
+        {
+            activeModel?.object.visible = false
+            activeModel = model
+            lastSelection = nil
+        }
+        if let character { model?.setOverrides(character.overrides) }
     }
 
     private func updateMotionFrame() throws

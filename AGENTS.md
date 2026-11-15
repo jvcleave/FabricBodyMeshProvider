@@ -38,8 +38,9 @@ the adjacent Fabric checkout. It builds independently of CMResearchKit.
   source of truth for port type and order.
 - Use `ParameterPort` for adjustable inputs and seed values through their Satin
   parameters.
-- Source selection belongs in Codable settings. A settings change must not alter
-  port type or count.
+- Source selection belongs in Codable settings and keeps the existing ports.
+  Explicit port layout settings follow Fabric's node settings contract and
+  preserve the identity of retained ports.
 - Preserve one `BodyMeshGeometry` identity for the node lifetime and force-send
   that stable reference only when its content or primitive changes.
 - Keep the current exact synchronous frame behavior until profiling justifies a

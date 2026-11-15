@@ -8,6 +8,7 @@ struct CharacterModelImport: Sendable
     let rig: CoMotionCharacterRig
     let surfaces: [Surface]
     let images: [String: USDZImage]
+    let inspectorTargets: [CharacterInspectorSettings.Target]
 
     struct Surface: Sendable
     {
@@ -56,6 +57,8 @@ struct CharacterModelImport: Sendable
         let nodesByID = Dictionary(uniqueKeysWithValues: model.nodes.map { ($0.id, $0) })
         let materialsByPath = Dictionary(uniqueKeysWithValues: model.materials.map { ($0.path, $0) })
         var surfaces: [Surface] = []
+        var inspectorTargets: [CharacterInspectorSettings.Target] = []
+        var listedMaterials = Set<String>()
         for node in model.nodes where node.parts.isEmpty == false
         {
             var ancestor: USDZNode? = node
@@ -65,6 +68,8 @@ struct CharacterModelImport: Sendable
             }
             guard ancestor == nil else { continue }
 
+            let meshLabel = node.name == "body" ? "Body" : node.name
+            inspectorTargets.append(.init(kind: .meshVisibility, path: node.sourcePath, label: meshLabel))
             for part in node.parts
             {
                 guard let skin = part.skin,
@@ -77,6 +82,12 @@ struct CharacterModelImport: Sendable
                 guard let materialPath = part.materialPath, let material = materialsByPath[materialPath]
                 else { throw CharacterModelError.surface(node.sourcePath, "Missing material") }
 
+                if listedMaterials.insert(materialPath).inserted
+                {
+                    let label = materialPath == node.sourcePath + "_Material" ? meshLabel : material.name
+                    inspectorTargets.append(.init(kind: .material, path: materialPath, label: label))
+                    inspectorTargets.append(.init(kind: .materialVisibility, path: materialPath, label: label))
+                }
                 surfaces.append(Surface(
                     sourcePath: node.sourcePath,
                     geometry: part.geometry,
@@ -89,7 +100,7 @@ struct CharacterModelImport: Sendable
         guard surfaces.contains(where: { $0.sourcePath == "/Human/body" })
         else { throw CharacterModelError.rig }
 
-        return CharacterModelImport(rig: rig, surfaces: surfaces, images: model.images)
+        return CharacterModelImport(rig: rig, surfaces: surfaces, images: model.images, inspectorTargets: inspectorTargets)
     }
 }
 
