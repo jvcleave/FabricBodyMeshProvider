@@ -79,6 +79,20 @@ final class CharacterModelRenderable
         object.visible = false
     }
 
+    var captureBounds: Bounds?
+    {
+        guard object.visible, !pose.isEmpty else { return nil }
+        var bounds = createBounds()
+        for body in bodies.prefix(pose.count)
+        {
+            for geometry in body.geometries
+            {
+                bounds = mergeBounds(bounds, transformBounds(geometry.bounds, body.object.localMatrix))
+            }
+        }
+        return bounds
+    }
+
     private func setPose(_ pose: [Pose])
     {
         self.pose = pose

@@ -31,6 +31,7 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
     private var motionFrame: CoMotionFramePayload?
     private var didReadMotionFrame = false
     private var lastSelection: BodyMeshFrameSelection?
+    private var boundingBox: Mesh?
 
     public override var object: Object? { sceneObject }
 
@@ -67,6 +68,12 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
                 ))
             ),
             (
+                "inputDrawBoundingBox",
+                ParameterPort(parameter: BoolParameter(
+                    "Draw Bounding Box", false, .toggle, "Draw the bounds of the visible posed character"
+                ))
+            ),
+            (
                 "outputCameraTransform",
                 NodePort<simd_float4x4>(
                     name: "Camera Transform", kind: .Outlet, description: "World transform of the capture eye"
@@ -85,6 +92,7 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
         motionFrame = nil
         didReadMotionFrame = false
         lastSelection = nil
+        boundingBox = nil
         try super.stopExecution(renderer: renderer)
     }
 
@@ -118,6 +126,7 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
 
         let loadError = prepareModels()
         selectModel()
+        defer { updateBoundingBox() }
         do
         {
             try updateMotionFrame()
@@ -217,5 +226,52 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
         {
             activeModel?.clear()
         }
+    }
+
+    private func updateBoundingBox()
+    {
+        let draw: ParameterPort<Bool> = port(named: "inputDrawBoundingBox")
+        guard draw.value == true, sceneObject.visible, let bounds = activeModel?.captureBounds
+        else
+        {
+            boundingBox?.visible = false
+            return
+        }
+        let size = bounds.max - bounds.min
+        guard size.x.isFinite, size.y.isFinite, size.z.isFinite, size.x > 0, size.y > 0, size.z > 0
+        else
+        {
+            boundingBox?.visible = false
+            return
+        }
+
+        let mesh: Mesh
+        if let boundingBox { mesh = boundingBox }
+        else
+        {
+            mesh = makeBoundingBox()
+            captureSpace.add(mesh)
+            boundingBox = mesh
+        }
+        let center = bounds.min + 0.5 * size
+        if mesh.position != center { mesh.position = center }
+        if mesh.scale != size { mesh.scale = size }
+        mesh.visible = true
+    }
+
+    private func makeBoundingBox() -> Mesh
+    {
+        let corners: [SIMD3<Float>] = [
+            [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5],
+            [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+        ]
+        let indices = [0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7]
+        let geometry = Geometry(context: context, primitiveType: .line)
+        geometry.addAttribute(Float3BufferAttribute(defaultValue: .zero, data: indices.map { corners[$0] }), for: .Position)
+        let material = BasicColorMaterial(context: context, color: [0.2, 0.9, 1, 1])
+        material.depthWriteEnabled = false
+        let mesh = Mesh(context: context, label: "Body Mesh Bounding Box", geometry: geometry, material: material)
+        mesh.castShadow = false
+        return mesh
     }
 }

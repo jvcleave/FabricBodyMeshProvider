@@ -891,6 +891,33 @@
             }
           },
           {
+            "name" : "inputDrawBoundingBox",
+            "payload" : {
+              "base" : {
+                "id" : "648D33CF-51CE-43D9-BBCD-7A5A24258B10",
+                "kind" : "Inlet",
+                "name" : "Draw Bounding Box",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "toggle",
+                    "defaultValue" : false,
+                    "description" : "Draw the bounds of the visible posed character",
+                    "id" : "648D33CF-51CE-43D9-BBCD-7A5A24258B10",
+                    "label" : "Draw Bounding Box",
+                    "value" : false
+                  },
+                  "type" : "bool"
+                },
+                "portDescription" : "Draw the bounds of the visible posed character",
+                "published" : true,
+                "publishedName" : "Draw Bounding Box"
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Bool"
+            }
+          },
+          {
             "name" : "outputCameraTransform",
             "payload" : {
               "base" : {

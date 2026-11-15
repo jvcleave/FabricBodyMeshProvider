@@ -116,6 +116,9 @@ playing. The view applies its **Confidence** and **Maximum Bodies** filters to
 the current frame. Use **Position**, **Orientation**, and **Scale** to place
 the view in the Fabric scene and add a scene light to illuminate it.
 
+Turn on **Draw Bounding Box** to render a wireframe around the active pose's
+bounds. The box follows the view and appears in preview and export.
+
 **Camera Distance** sets the pivot depth measured from the capture eye.
 Connect the view's **Camera Transform** and the motion source's **Source Size**
 to a **Body Mesh View Camera**. The camera follows the view and retains the
@@ -217,7 +220,8 @@ The scene alternates `human1.usdz` and `human2.usdz` over one CoMotion archive.
 Both character assets, **CoMotion Data**, **Body Mesh View**, and **Body Mesh
 View Camera** are visible on the root graph. Use **Frames per Character** to
 set the switch interval and **Body Mesh View** to place the active character
-and its camera. Move the sample folder with both USDZs and `motiondata.bin`.
+and its camera. The Published inspector also exposes **Draw Bounding Box**,
+which starts off. Move the sample folder with both USDZs and `motiondata.bin`.
 [Character Switching.fabric](FabricScenes/Character%20Switching/Character%20Switching.fabric)
 
 ### Character sample

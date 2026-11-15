@@ -18,7 +18,9 @@ one standalone Body Mesh View, and a separate view camera. Verify both loaded
 models at the switch boundaries, camera following, and lit live and exported
 frames from a moved sample folder.
 
-The standalone scene is verified and open in the Xcode-launched Editor.
+The standalone scene was pushed as `7acaaa5`. The follow-up added an optional
+wireframe around the active character's posed bounds. The sample publishes
+the toggle with a default of off.
 
 ## Completed milestones
 
@@ -107,7 +109,13 @@ via ports. Body Mesh View Group retains the legacy subgraph implementation.
   Both USDZ reference nodes and the companion camera are visible at the root.
   The Editor executable and debug library hashes matched before and after
   the plug-in update.
+- The bounding box ran on both models in the preview and in a ProRes export.
+  Turning it off restored the original preview pixels. Clearing motion hid
+  the box. See `FabricBodyMeshProvider-USDZ/runtime/bounding-box/verify.log`.
+- The Xcode-launched Editor drew the outline with the toggle on in a
+  verification copy and reopened the repository sample with the published
+  toggle off.
 
 ## Next exact action
 
-Record the pushed standalone plug-in revision in the Fabric workspace.
+Record the pushed plug-in revision in the Fabric workspace.
