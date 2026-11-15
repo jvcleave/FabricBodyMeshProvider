@@ -29,10 +29,11 @@ earlier TCHR v2 proposal and uses Creator's existing USDZ export directly.
 
 ## Input and playback contract
 
-- Accept Creator USDZs with `coMotionJointMap` v1 on `/Human/Rig`. Require a
-  visible body bound to one mapped skeleton in Y-up meters at the model origin,
-  one source index per joint in authored order, values from `-1` through `23`,
-  and exactly one pelvis mapped to `0`. Unmapped joints follow their parents.
+- Accept `.usdz` as the sole imported character model format. Require Creator's
+  `coMotionJointMap` v1 on `/Human/Rig` and a visible body bound to one mapped
+  skeleton in Y-up meters at the model origin. Require one source index per
+  joint in authored order, values from `-1` through `23`, and exactly one pelvis
+  mapped to `0`. Unmapped joints follow their parents.
   Static and baked exports with the map can both supply a character. The selected
   archive supplies every pose and the root travel, even when the USDZ contains a
   clip. Older exports that lack the map require a fresh export from Creator.
@@ -110,6 +111,37 @@ Carry the preparation path proven in the bundle spike into the new node. Use
 the sample to show both selectors and the Intrinsic Camera connection. Start
 it with Built-in and the published `24sectest` archive beside the graph.
 [Fabric export startup](https://github.com/Fabric-Project/Fabric/blob/c1da66398ae4b28c266e0b3d4ef456d60c97f171/Fabric/Graph/GraphExportRenderer.swift#L64-L110) [Plug-in sample workflow](../../../README.md#use-in-fabric)
+
+## Shipped example scene goal
+
+Ship a `.fabric` graph alongside its two mapped Creator USDZs and one CoMotion
+archive. Use paths relative to the saved graph so users can move the sample
+folder, reopen the graph, and export a movie.
+
+- **Body Mesh Character 1** loads `human1.usdz`.
+- **Body Mesh Character 2** loads `human2.usdz`.
+- **CoMotion Data** opens `motiondata.bin`, a CoMotion v2 archive in the same
+  format as `frames.bin`. Both characters load at graph startup and use the same
+  detection from its **CoMotion Frame** output.
+- **Body Mesh View** contains both characters and uses **Source Size** from
+  CoMotion Data for capture framing. Position and rotate the view as one object
+  in the scene.
+- **Body Mesh View Camera** uses the existing **Body Mesh Intrinsic Camera**
+  inside the view. It follows the view's saved viewpoint and shows the
+  source-matched front framing.
+
+Use Fabric's **Rendering Info** to get the zero-based **Frame Number**. Choose
+a positive integer `N` for the number of rendered frames per character. Use
+**Number Binary Operator** (Divide), **Round Number** (Floor), and
+**Number Binary Operator** (Modulo) to compute `floor(Frame Number / N) % 2`.
+Two **Number Comparison** nodes compare the result to `0` and `1` and drive
+the corresponding characters' **Visible** inputs. Each switch reveals the
+selected character at the frame already supplied by CoMotion Data.
+
+Verify that preview and a movie export from the reopened sample show
+`human1.usdz` on frame `0`, `human2.usdz` on frame `N`, and `human1.usdz` again
+on frame `2N`, with continuous motion across both switches. Move the view in the
+scene and check its front framing through the view camera.
 
 ## Acceptance
 

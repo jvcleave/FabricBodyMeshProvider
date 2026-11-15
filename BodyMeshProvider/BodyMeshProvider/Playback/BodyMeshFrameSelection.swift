@@ -10,11 +10,24 @@ struct BodyMeshFrameSelection: Equatable
 
     init(node: Node, graphTime: TimeInterval, archive: CoMotionArchiveReader)
     {
+        self.init(node: node, frameIndex: Self.resolveFrameIndex(node: node, graphTime: graphTime, archive: archive))
+    }
+
+    init(node: Node, frameIndex: Int)
+    {
+        self.frameIndex = frameIndex
+        let inputConfidence: ParameterPort<Float> = node.port(named: "inputConfidence")
+        let inputMaximumBodies: ParameterPort<Int> = node.port(named: "inputMaximumBodies")
+        let confidence = inputConfidence.value ?? 0.2
+        confidenceThreshold = confidence.isFinite ? min(max(confidence, 0.05), 1) : 0.2
+        maximumBodyCount = min(max(inputMaximumBodies.value ?? 1, 1), CoMotionArchiveFormat.maximumPeoplePerFrame)
+    }
+
+    static func resolveFrameIndex(node: Node, graphTime: TimeInterval, archive: CoMotionArchiveReader) -> Int
+    {
         let inputTime: ParameterPort<Float> = node.port(named: "inputTime")
         let inputLoop: ParameterPort<Bool> = node.port(named: "inputLoop")
         let inputRate: ParameterPort<Float> = node.port(named: "inputPlaybackRate")
-        let inputConfidence: ParameterPort<Float> = node.port(named: "inputConfidence")
-        let inputMaximumBodies: ParameterPort<Int> = node.port(named: "inputMaximumBodies")
         let time: TimeInterval
         if inputTime.connectedOutlets.isEmpty
         {
@@ -24,10 +37,7 @@ struct BodyMeshFrameSelection: Equatable
         {
             time = TimeInterval(inputTime.value ?? 0)
         }
-        frameIndex = archive.frameIndex(time: time, loop: inputLoop.value ?? true)
-        let confidence = inputConfidence.value ?? 0.2
-        confidenceThreshold = confidence.isFinite ? min(max(confidence, 0.05), 1) : 0.2
-        maximumBodyCount = min(max(inputMaximumBodies.value ?? 1, 1), CoMotionArchiveFormat.maximumPeoplePerFrame)
+        return archive.frameIndex(time: time, loop: inputLoop.value ?? true)
     }
 
     func select(_ people: [CoMotionFramePerson]) -> [CoMotionFramePerson]

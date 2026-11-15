@@ -6,6 +6,38 @@ enum BodyMeshPlaybackPorts
 {
     static func inputs() -> [(name: String, port: Fabric.Port)]
     {
+        timingInputs() + [
+            (
+                "inputConfidence",
+                ParameterPort(
+                    parameter: FloatParameter(
+                        "Confidence",
+                        0.2,
+                        0.05,
+                        1,
+                        .slider,
+                        "Minimum confidence required to output a detected body"
+                    )
+                )
+            ),
+            (
+                "inputMaximumBodies",
+                ParameterPort(
+                    parameter: IntParameter(
+                        "Maximum Bodies",
+                        1,
+                        1,
+                        8,
+                        .inputfield,
+                        "Maximum number of highest-confidence bodies to output"
+                    )
+                )
+            ),
+        ]
+    }
+
+    static func timingInputs() -> [(name: String, port: Fabric.Port)]
+    {
         [
             (
                 "inputTime",
@@ -37,32 +69,6 @@ enum BodyMeshPlaybackPorts
                         1,
                         .inputfield,
                         "Graph-time playback multiplier; ignored when Time is connected"
-                    )
-                )
-            ),
-            (
-                "inputConfidence",
-                ParameterPort(
-                    parameter: FloatParameter(
-                        "Confidence",
-                        0.2,
-                        0.05,
-                        1,
-                        .slider,
-                        "Minimum confidence required to output a detected body"
-                    )
-                )
-            ),
-            (
-                "inputMaximumBodies",
-                ParameterPort(
-                    parameter: IntParameter(
-                        "Maximum Bodies",
-                        1,
-                        1,
-                        8,
-                        .inputfield,
-                        "Maximum number of highest-confidence bodies to output"
                     )
                 )
             ),

@@ -12,7 +12,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     public override class var name: String { "Body Mesh Character" }
     public override class var nodeType: Node.NodeType { .Object(objectType: .Loader) }
     public override class var nodeTimeMode: Node.TimeMode { .TimeBase }
-    public override class var nodeDescription: String { "Animate the built-in body or a Creator USDZ with a CoMotion archive." }
+    public override class var nodeDescription: String { "Animate the built-in body or a Creator USDZ with CoMotion." }
 
     private struct SourceRequest: Sendable
     {
@@ -21,7 +21,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         var archiveRevision: UInt64 = 0
     }
 
-    private struct ArchiveRequest: Equatable
+    private struct FileRequest: Equatable
     {
         let url: URL?
         let revision: UInt64
@@ -30,12 +30,15 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     // Editor and graph execution share the source request. The graph owns the
     // loaded resources, frame selection, and all scene mutations.
     private let sourceRequest: OSAllocatedUnfairLock<SourceRequest>
-    private var attemptedModelRevision: UInt64?
-    private var attemptedArchive: ArchiveRequest?
+    private var attemptedModel: FileRequest?
+    private var attemptedArchive: FileRequest?
     private lazy var sceneObject = Object(context: context, label: Self.name)
     private var importedCharacter: CharacterModelRenderable?
     private var builtInCharacter: BuiltInCharacterRenderable?
     private var archive: CoMotionArchiveReader?
+    private var usesSharedMotion = false
+    private var didReadSharedFrame = false
+    private var sharedFrame: CoMotionFramePayload?
     private var lastFrame: BodyMeshFrameSelection?
     private var didPrepareReferencePose = false
 
@@ -44,7 +47,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     {
         // Export serializes the settings without copying the document directory.
         let directory = graph?.fileReferenceBaseURL
-        return sourceRequest.withLock { $0.settings.resolvingArchive(relativeTo: directory) }
+        return sourceRequest.withLock { $0.settings.resolvingSources(relativeTo: directory) }
     }
 
     public override class func registerPorts(context: Context) -> [(name: String, port: Fabric.Port)]
@@ -57,8 +60,19 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                 orientation.value = SIMD4(0, 0, 0, 1)
             }
         }
-        return BodyMeshPlaybackPorts.inputs() + ports + BodyMeshPlaybackPorts.outputs()
+        return BodyMeshPlaybackPorts.inputs() + ports + BodyMeshPlaybackPorts.outputs() + [
+            (
+                "inputCoMotionFrame",
+                NodePort<CoMotionFramePayload.Values>(
+                    name: "CoMotion Frame",
+                    kind: .Inlet,
+                    description: "Shared motion frame from CoMotion Data"
+                )
+            ),
+        ]
     }
+
+    private var inputCoMotionFrame: NodePort<CoMotionFramePayload.Values> { port(named: "inputCoMotionFrame") }
 
     public var outputDetectedBodies: NodePort<Int> { port(named: "outputDetectedBodies") }
     public var outputBodies: NodePort<Int> { port(named: "outputBodies") }
@@ -86,13 +100,11 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     {
         guard let settings = settings as? CharacterModelSettings else { return }
         let directory = graph?.fileReferenceBaseURL
-        let archiveURL = settings.resolvingArchive(relativeTo: directory).motionArchiveURL
+        let resolved = settings.resolvingSources(relativeTo: directory)
         sourceRequest.withLock { request in
-            if request.settings.characterModelURL != settings.characterModelURL { request.modelRevision &+= 1 }
-            if request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL != archiveURL
-            {
-                request.archiveRevision &+= 1
-            }
+            let previous = request.settings.resolvingSources(relativeTo: directory)
+            if previous.characterModelURL != resolved.characterModelURL { request.modelRevision &+= 1 }
+            if previous.motionArchiveURL != resolved.motionArchiveURL { request.archiveRevision &+= 1 }
             request.settings = settings
         }
     }
@@ -110,8 +122,12 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                 archiveURL: settings.motionArchiveURL,
                 selectModel: { [weak self] url in
                     guard let self else { return }
+                    let directory = self.graph?.fileReferenceBaseURL
                     let settings = self.sourceRequest.withLock { request in
-                        if request.settings.characterModelURL == url { request.modelRevision &+= 1 }
+                        if request.settings.resolvingSources(relativeTo: directory).characterModelURL == url
+                        {
+                            request.modelRevision &+= 1
+                        }
                         return request.settings
                     }
                     self.setSettings(CharacterModelSettings(characterModelURL: url, motionArchiveURL: settings.motionArchiveURL))
@@ -120,7 +136,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                     guard let self else { return }
                     let directory = self.graph?.fileReferenceBaseURL
                     let settings = self.sourceRequest.withLock { request in
-                        if request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL == url
+                        if request.settings.resolvingSources(relativeTo: directory).motionArchiveURL == url
                         {
                             request.archiveRevision &+= 1
                         }
@@ -134,8 +150,11 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
 
     public override func stopExecution(renderer: GraphRenderer) throws
     {
-        attemptedModelRevision = nil
+        attemptedModel = nil
         attemptedArchive = nil
+        usesSharedMotion = false
+        didReadSharedFrame = false
+        sharedFrame = nil
         lastFrame = nil
         didPrepareReferencePose = false
         sceneObject.removeAll()
@@ -154,17 +173,32 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     {
         _ = evaluate(object: sceneObject, atTime: executionInfo.timing.time)
         let request = sourceRequest.withLock { $0 }
-        let directory = graph?.fileReferenceBaseURL
-        let archiveRequest = ArchiveRequest(
-            url: request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL,
-            revision: request.archiveRevision
-        )
+        let settings = request.settings.resolvingSources(relativeTo: graph?.fileReferenceBaseURL)
+        // A published inlet can receive a value from an enclosing Sub Graph.
+        let usesSharedInput = inputCoMotionFrame.published || !inputCoMotionFrame.connectedOutlets.isEmpty
+        if usesSharedMotion != usesSharedInput
+        {
+            usesSharedMotion = usesSharedInput
+            attemptedArchive = nil
+            archive = nil
+            didReadSharedFrame = false
+            sharedFrame = nil
+            clearPose()
+            publishMotionMetadata()
+        }
         var requestedFrameIndex: Int?
         var detectedBodies = 0
         do
         {
-            try loadCharacterModel(request)
-            try loadMotionArchive(archiveRequest)
+            try loadCharacterModel(FileRequest(url: settings.characterModelURL, revision: request.modelRevision))
+            if usesSharedMotion
+            {
+                try updateSharedFrame()
+            }
+            else
+            {
+                try loadMotionArchive(FileRequest(url: settings.motionArchiveURL, revision: request.archiveRevision))
+            }
             guard sourceRequest.withLock({ $0.modelRevision == request.modelRevision && $0.archiveRevision == request.archiveRevision })
             else
             {
@@ -172,30 +206,34 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                 return
             }
 
-            if let archive
+            let selection = sharedFrame.map { BodyMeshFrameSelection(node: self, frameIndex: $0.frameIndex) }
+                ?? archive.map { BodyMeshFrameSelection(node: self, graphTime: executionInfo.timing.time, archive: $0) }
+            if let selection
             {
-                let frame = BodyMeshFrameSelection(node: self, graphTime: executionInfo.timing.time, archive: archive)
-                requestedFrameIndex = frame.frameIndex
-                if frame != lastFrame
+                requestedFrameIndex = selection.frameIndex
+                if selection != lastFrame
                 {
-                    let recordedFrame = try archive.frameAtIndex(frame.frameIndex)
                     let people: [CoMotionFramePerson]
-                    if case let .available(detections) = recordedFrame.status { people = detections }
+                    if let sharedFrame { people = sharedFrame.people }
+                    else if let archive, case let .available(detections) = try archive.frameAtIndex(selection.frameIndex).status
+                    {
+                        people = detections
+                    }
                     else { people = [] }
-                    let selected = frame.select(people)
+                    let selected = selection.select(people)
                     detectedBodies = people.count
                     try importedCharacter?.prepare(selected)
                     try builtInCharacter?.prepare(selected)
                     let hasCharacter = importedCharacter != nil || builtInCharacter != nil
-                    publishFrame(index: frame.frameIndex, detected: detectedBodies, output: hasCharacter ? selected.count : 0)
-                    lastFrame = frame
+                    publishFrame(index: selection.frameIndex, detected: detectedBodies, output: hasCharacter ? selected.count : 0)
+                    lastFrame = selection
                 }
                 else
                 {
                     detectedBodies = outputDetectedBodies.value ?? 0
                 }
             }
-            else if request.settings.motionArchiveURL == nil, let importedCharacter
+            else if !usesSharedMotion, settings.motionArchiveURL == nil, let importedCharacter
             {
                 if !didPrepareReferencePose
                 {
@@ -214,6 +252,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         catch
         {
             clearPose()
+            if usesSharedMotion, sharedFrame == nil { publishMotionMetadata() }
             publishFrame(index: requestedFrameIndex, detected: detectedBodies, output: 0)
             guard sourceRequest.withLock({ $0.modelRevision == request.modelRevision && $0.archiveRevision == request.archiveRevision }) else { return }
             throw FabricError(
@@ -233,6 +272,16 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         outputFrameAvailable.send(output != 0)
     }
 
+    private func publishMotionMetadata(frameRate: Float? = nil, frameCount: Int? = nil, sourceSize: SIMD2<Float>? = nil)
+    {
+        let duration: Float? = if let frameRate, let frameCount { Float(Double(frameCount) / Double(frameRate)) }
+        else { nil }
+        outputFrameRate.send(frameRate)
+        outputFrameCount.send(frameCount)
+        outputDuration.send(duration)
+        outputSourceSize.send(sourceSize)
+    }
+
     private func clearPose()
     {
         lastFrame = nil
@@ -241,78 +290,61 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         builtInCharacter?.clear()
     }
 
-    private func loadCharacterModel(_ request: SourceRequest) throws
+    private func updateSharedFrame() throws
     {
-        guard attemptedModelRevision != request.modelRevision else { return }
-        attemptedModelRevision = request.modelRevision
+        guard !didReadSharedFrame || inputCoMotionFrame.valueDidChange else { return }
+        didReadSharedFrame = true
+        lastFrame = nil
+        sharedFrame = nil
+        guard let values = inputCoMotionFrame.value, !values.isEmpty else
+        {
+            clearPose()
+            publishMotionMetadata()
+            return
+        }
+        let frame = try CoMotionFramePayload(values: values)
+        sharedFrame = frame
+        publishMotionMetadata(frameRate: frame.frameRate, frameCount: frame.frameCount, sourceSize: frame.sourceSize)
+    }
+
+    private func loadCharacterModel(_ request: FileRequest) throws
+    {
+        guard attemptedModel != request else { return }
+        attemptedModel = request
         sceneObject.removeAll()
         importedCharacter = nil
         builtInCharacter = nil
         lastFrame = nil
         didPrepareReferencePose = false
-        if let url = request.settings.characterModelURL
+        if let url = request.url
         {
-            let model = try waitForSource { try await CharacterModelImport.load(url) }
+            let model = try BodyMeshProviderResources.waitForSource { try await CharacterModelImport.load(url) }
             let prepared = try CharacterModelRenderable(context: context, model: model)
-            guard sourceRequest.withLock({ $0.modelRevision == request.modelRevision }) else { return }
+            guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
             sceneObject.add(prepared.object)
             importedCharacter = prepared
         }
         else
         {
-            let reconstructor = try waitForSource { try BodyMeshProviderResources.meshReconstructor() }
+            let reconstructor = try BodyMeshProviderResources.waitForSource { try BodyMeshProviderResources.meshReconstructor() }
             let prepared = BuiltInCharacterRenderable(context: context, reconstructor: reconstructor)
-            guard sourceRequest.withLock({ $0.modelRevision == request.modelRevision }) else { return }
+            guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
             sceneObject.add(prepared.object)
             builtInCharacter = prepared
         }
     }
 
-    private func loadMotionArchive(_ request: ArchiveRequest) throws
+    private func loadMotionArchive(_ request: FileRequest) throws
     {
         guard attemptedArchive != request else { return }
         attemptedArchive = request
         archive = nil
         clearPose()
-        outputFrameRate.send(nil)
-        outputFrameCount.send(nil)
-        outputDuration.send(nil)
-        outputSourceSize.send(nil)
+        publishMotionMetadata()
         guard let url = request.url, url.scheme != nil else { return }
-        guard url.isFileURL else { throw CharacterModelError.resources("The motion archive requires a local file URL.") }
-
-        let archive = try waitForSource {
-            let archive = try CoMotionArchiveReader(directoryURL: url)
-            let descriptor = try BodyMeshAssetDescriptor.loadIfPresent(directoryURL: url)
-            try descriptor?.validate(archiveReader: archive)
-            return archive
-        }
+        let archive = try BodyMeshProviderResources.motionArchive(url)
         guard sourceRequest.withLock({ $0.archiveRevision == request.revision }) else { return }
         self.archive = archive
-        outputFrameRate.send(archive.metadata.encodedFrameRate)
-        outputFrameCount.send(archive.frameCount)
-        outputDuration.send(Float(archive.duration))
-        outputSourceSize.send(archive.metadata.sourceSize)
-    }
-
-    private func waitForSource<Value: Sendable>(_ load: @escaping @Sendable () async throws -> Value) throws -> Value
-    {
-        let completed = DispatchSemaphore(value: 0)
-        let result = OSAllocatedUnfairLock<Result<Value, any Error>?>(initialState: nil)
-        // Fabric draws immediately after cold graph startup. Only a changed
-        // source waits for preparation. The worker never calls back into Fabric.
-        Task.detached(priority: .userInitiated) {
-            defer { completed.signal() }
-            do
-            {
-                let value = try await load()
-                result.withLock { $0 = .success(value) }
-            }
-            catch { result.withLock { $0 = .failure(error) } }
-        }
-        completed.wait()
-        guard let loaded = result.withLock({ $0 })
-        else { throw CharacterModelError.resources("The source worker did not return a result.") }
-        return try loaded.get()
+        publishMotionMetadata(frameRate: archive.metadata.encodedFrameRate, frameCount: archive.frameCount, sourceSize: archive.metadata.sourceSize)
     }
 }

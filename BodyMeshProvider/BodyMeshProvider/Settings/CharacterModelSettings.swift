@@ -13,12 +13,11 @@ public struct CharacterModelSettings: NodeSettings
         self.motionArchiveURL = motionArchiveURL
     }
 
-    func resolvingArchive(relativeTo directory: URL?) -> Self
+    func resolvingSources(relativeTo directory: URL?) -> Self
     {
-        guard let motionArchiveURL, motionArchiveURL.scheme == nil, let directory,
-              let archive = URL(string: motionArchiveURL.relativeString, relativeTo: directory)?.absoluteURL
-        else { return self }
-
-        return Self(characterModelURL: characterModelURL, motionArchiveURL: archive.standardizedFileURL)
+        Self(
+            characterModelURL: BodyMeshProviderResources.resolveFileURL(characterModelURL, relativeTo: directory),
+            motionArchiveURL: BodyMeshProviderResources.resolveFileURL(motionArchiveURL, relativeTo: directory)
+        )
     }
 }
