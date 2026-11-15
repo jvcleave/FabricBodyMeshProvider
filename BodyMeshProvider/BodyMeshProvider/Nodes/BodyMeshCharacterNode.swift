@@ -318,8 +318,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         didPrepareReferencePose = false
         if let url = request.url
         {
-            let model = try BodyMeshProviderResources.waitForSource { try await CharacterModelImport.load(url) }
-            let prepared = try CharacterModelRenderable(context: context, model: model)
+            let prepared = try CharacterModelRenderable(context: context, sourceURL: url)
             guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
             sceneObject.add(prepared.object)
             importedCharacter = prepared

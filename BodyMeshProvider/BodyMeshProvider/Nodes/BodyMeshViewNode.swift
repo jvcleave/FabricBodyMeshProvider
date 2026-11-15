@@ -5,7 +5,7 @@ import simd
 
 public final class BodyMeshViewNode: SubgraphNode
 {
-    public override class var name: String { "Body Mesh View" }
+    public override class var name: String { "Body Mesh View Group" }
     public override class var nodeDescription: String { "Place live characters and their source camera together." }
     public override var nodeExecutionMode: Node.ExecutionMode { .Consumer }
 

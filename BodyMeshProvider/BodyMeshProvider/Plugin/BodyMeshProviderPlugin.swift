@@ -16,6 +16,9 @@ public final class BodyMeshProviderPlugin: NSObject, FabricPlugin
             BodyMeshIntrinsicCameraNode.self,
             CoMotionDataNode.self,
             BodyMeshViewNode.self,
+            BodyMeshCharacterAssetNode.self,
+            BodyMeshSceneViewNode.self,
+            BodyMeshViewCameraNode.self,
         ]
     }
 }

@@ -2,13 +2,23 @@
 
 - Updated 2026-11-15
 - Owning repository `/Users/jvcleave/Documents/GitHub/JVC_FABRIC_PLUGINS/BodyMeshProvider`
-- Branch `codex/body-mesh-usdz` at `05aecfd`
+- Branch `codex/body-mesh-usdz` at `45c84bb`
 
 ## Objective
 
 Ship the [two-character example](../todos/USDZ_CHARACTER_MODEL_UPDATE_PLAN.md#shipped-example-scene-goal)
-with one CoMotion archive, timed visibility switches, a movable view, and its
+with one CoMotion archive, timed character switches, a movable view, and its
 calibrated camera.
+
+## Current milestone
+
+The subgraph example was committed and pushed as `45c84bb`. The approved next
+milestone is a root graph with two USDZ source nodes, one CoMotion Data node,
+one standalone Body Mesh View, and a separate view camera. Verify both loaded
+models at the switch boundaries, camera following, and lit live and exported
+frames from a moved sample folder.
+
+The standalone scene is verified and open in the Xcode-launched Editor.
 
 ## Completed milestones
 
@@ -25,14 +35,15 @@ USDZs and one archive, with Frames per Character set to 30.
 - Use Fabric's existing collection ports and the plug-in's archive reader.
 - An unwired character uses its saved Motion Archive and playback controls.
 - Use the existing signed Fabric Editor build for integration.
-- The view owns a saved pivot and placement. Its camera is a child that uses the
-  existing `Source Size` connection and Fabric's usual camera selection.
+- Keep the legacy subgraph type available for saved graphs. For the standalone
+  view, prepare both model references and select the active one by index. The
+  camera consumes the view's camera transform and CoMotion Data's Source Size.
 - The [loader investigation](https://github.com/jvcleave/JVC_FABRIC_PLUGINS/issues/1)
   tracks mapped USDZ import parity.
 
 ## Repository state
 
-The verified sample and its assets are together in
+The flat sample and its assets are together in
 [`FabricScenes/Character Switching`](../../../FabricScenes/Character%20Switching).
 
 The USDZ update plan contains the approved sample goal and USDZ-only import
@@ -43,9 +54,10 @@ CoMotion Data now publishes a frame and source dimensions. Body Mesh Character
 uses the wired frame for its model and detection selection. Both settings paths
 resolve relative asset references for cold graph copies.
 
-Body Mesh View wraps the Fabric Sub Graph scene with a scene transform.
-Camera Distance shifts the capture eye relative to the view pivot. The example
-publishes Source Size from a child Intrinsic Camera.
+The standalone view prepares both USDZs and poses the active model from its
+CoMotion Frame inlet. Camera Distance shifts the capture eye relative to the
+view pivot. Body Mesh View Camera receives that eye transform and Source Size
+via ports. Body Mesh View Group retains the legacy subgraph implementation.
 
 ## Relevant files
 
@@ -84,8 +96,18 @@ publishes Source Size from a child Intrinsic Camera.
   `FabricBodyMeshProvider-USDZ/runtime/body-mesh-view/xcode-output-check/saved-lighting.log`.
 - Saving the sample in the Editor expands its three relative plug-in settings
   URLs to absolute paths. The verified relocated copy keeps relative URLs.
+- The standalone plug-in built in the existing Debug cache. See
+  `FabricBodyMeshProvider-USDZ/standalone-view-debug.log`.
+- The relocated graph prepared both models on frame 0 and switched on render
+  frames 30 and 60 while CoMotion advanced through archive frames 1, 61, and
+  121. The camera followed translation, rotation, and scale. The lit ProRes
+  frames matched the preview silhouettes, and the legacy group scene still
+  rendered. See `FabricBodyMeshProvider-USDZ/runtime/standalone-view/verify.log`.
+- Both models rendered in the repository sample in the Xcode-launched Editor.
+  Both USDZ reference nodes and the companion camera are visible at the root.
+  The Editor executable and debug library hashes matched before and after
+  the plug-in update.
 
 ## Next exact action
 
-Use relative asset references in the release copy of the Character Switching
-folder.
+Record the pushed standalone plug-in revision in the Fabric workspace.

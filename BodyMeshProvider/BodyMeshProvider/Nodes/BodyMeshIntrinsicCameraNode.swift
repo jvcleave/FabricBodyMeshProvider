@@ -5,7 +5,7 @@ import Metal
 import Satin
 import simd
 
-public final class BodyMeshIntrinsicCameraNode: ObjectNode<PerspectiveCamera>
+public class BodyMeshIntrinsicCameraNode: ObjectNode<PerspectiveCamera>
 {
     public override class var name: String { "Body Mesh Intrinsic Camera" }
     public override class var nodeType: Node.NodeType { .Object(objectType: .Camera) }
@@ -97,12 +97,17 @@ public final class BodyMeshIntrinsicCameraNode: ObjectNode<PerspectiveCamera>
     public override func startExecution(renderer: GraphRenderer) throws
     {
         try super.startExecution(renderer: renderer)
+        applyLocalPose()
+        updateProjection()
+    }
+
+    func applyLocalPose()
+    {
         camera.position = inputPosition.value ?? .zero
         camera.scale = inputScale.value ?? .one
         camera.orientation = safeOrientation(
             inputOrientation.value ?? Self.defaultOrientation
         )
-        updateProjection()
     }
 
     public override func evaluate(object: Object?, atTime: TimeInterval) -> Bool

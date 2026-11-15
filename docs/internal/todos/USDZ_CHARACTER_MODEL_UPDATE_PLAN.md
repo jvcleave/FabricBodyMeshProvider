@@ -118,25 +118,24 @@ Ship a `.fabric` graph alongside its two mapped Creator USDZs and one CoMotion
 archive. Use paths relative to the saved graph so users can move the sample
 folder, reopen the graph, and export a movie.
 
-- **Body Mesh Character 1** loads `human1.usdz`.
-- **Body Mesh Character 2** loads `human2.usdz`.
+- Two **Body Mesh Character Asset** nodes select `human1.usdz` and
+  `human2.usdz` and feed the view's **Character A** and **Character B** inputs.
 - **CoMotion Data** opens `motiondata.bin`, a CoMotion v2 archive in the same
-  format as `frames.bin`. Both characters load at graph startup and use the same
-  detection from its **CoMotion Frame** output.
-- **Body Mesh View** contains both characters and uses **Source Size** from
-  CoMotion Data for capture framing. Position and rotate the view as one object
-  in the scene.
-- **Body Mesh View Camera** uses the existing **Body Mesh Intrinsic Camera**
-  inside the view. It follows the view's saved viewpoint and shows the
-  source-matched front framing.
+  format as `frames.bin`. Its **CoMotion Frame** drives the active character.
+- **Body Mesh View** prepares both models at graph startup and poses the
+  character selected by **Character Index**. Position and rotate the view as
+  one object in the scene.
+- **Body Mesh View Camera** uses **Camera Transform** from the view and
+  **Source Size** from CoMotion Data for capture framing.
+- A **Directional Light** illuminates the character. The graph shows these
+  nodes together at the root.
 
 Use Fabric's **Rendering Info** to get the zero-based **Frame Number**. Choose
 a positive integer `N` for the number of rendered frames per character. Use
 **Number Binary Operator** (Divide), **Round Number** (Floor), and
 **Number Binary Operator** (Modulo) to compute `floor(Frame Number / N) % 2`.
-Two **Number Comparison** nodes compare the result to `0` and `1` and drive
-the corresponding characters' **Visible** inputs. Each switch reveals the
-selected character at the frame already supplied by CoMotion Data.
+Connect the modulo result to the view's **Character Index**. Each switch
+renders the selected character at the frame already supplied by CoMotion Data.
 
 Verify that preview and a movie export from the reopened sample show
 `human1.usdz` on frame `0`, `human2.usdz` on frame `N`, and `human1.usdz` again

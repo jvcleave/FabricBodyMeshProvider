@@ -1,4 +1,5 @@
 import BodyMeshProviderCore
+import Foundation
 import Metal
 import MetalPerformanceShaders
 import Satin
@@ -30,6 +31,12 @@ final class CharacterModelRenderable
     private var pose: [Pose] = []
     private var poseCompletion: OSAllocatedUnfairLock<Bool>?
     private var bodies: [Body] = []
+
+    convenience init(context: Context, sourceURL: URL) throws
+    {
+        let model = try BodyMeshProviderResources.waitForSource { try await CharacterModelImport.load(sourceURL) }
+        try self.init(context: context, model: model)
+    }
 
     init(context: Context, model: CharacterModelImport) throws
     {

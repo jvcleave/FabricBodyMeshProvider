@@ -6,7 +6,12 @@ enum BodyMeshPlaybackPorts
 {
     static func inputs() -> [(name: String, port: Fabric.Port)]
     {
-        timingInputs() + [
+        timingInputs() + selectionInputs()
+    }
+
+    static func selectionInputs() -> [(name: String, port: Fabric.Port)]
+    {
+        [
             (
                 "inputConfidence",
                 ParameterPort(
