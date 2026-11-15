@@ -219,9 +219,12 @@ registry starts.
 The scene alternates `human1.usdz` and `human2.usdz` over one CoMotion archive.
 Both character assets, **CoMotion Data**, **Body Mesh View**, and **Body Mesh
 View Camera** are visible on the root graph. Use **Frames per Character** to
-set the switch interval and **Body Mesh View** to place the active character
-and its camera. The Published inspector also exposes **Draw Bounding Box**,
-which starts off. Move the sample folder with both USDZs and `motiondata.bin`.
+set the switch interval and **Body Mesh View** to place the active character.
+In the Published inspector, set **Camera View** to `0` to follow the view or
+`1` to use the fixed **Scene Camera Pose**. Both viewpoints use the
+capture lens and share the same running CoMotion stream. Use **Draw Bounding
+Box** to show the posed character's bounds. Move the sample folder with both
+USDZs and `motiondata.bin`.
 [Character Switching.fabric](FabricScenes/Character%20Switching/Character%20Switching.fabric)
 
 ### Character sample

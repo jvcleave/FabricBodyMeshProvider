@@ -56,15 +56,27 @@
     },
     {
       "active" : true,
-      "id" : "72D42C7F-84F7-4591-AE34-008A9B62B1E8",
-      "inletPortID" : "4E08B661-17A8-4491-AE7A-8752569BC8D1",
-      "outletPortID" : "F5E93064-F034-41EE-8ED3-66E7FB7C5001"
-    },
-    {
-      "active" : true,
       "id" : "4E93AE57-EA95-4DCC-B0AE-CEBFEE369F0C",
       "inletPortID" : "292BD3BB-E3F5-42CD-B25C-24ED46B49D39",
       "outletPortID" : "8EFCB179-3D32-4A36-A545-8225EB032853"
+    },
+    {
+      "active" : true,
+      "id" : "C02E960E-2E85-4B98-B03F-49A6BC025DB3",
+      "inletPortID" : "58456DBA-7B1A-44B4-935C-A052AFD0BE5A",
+      "outletPortID" : "F5E93064-F034-41EE-8ED3-66E7FB7C5001"
+    },
+    {
+      "active" : false,
+      "id" : "31708A10-E3A3-4060-A394-A7BC20F9E544",
+      "inletPortID" : "EA2067D2-7B39-4A36-9D80-6948160EFAC1",
+      "outletPortID" : "E7C5D50A-D60A-4B77-9823-2AFA090345FA"
+    },
+    {
+      "active" : true,
+      "id" : "744CD1B8-70CC-4599-A932-4A40C95B3D38",
+      "inletPortID" : "4E08B661-17A8-4491-AE7A-8752569BC8D1",
+      "outletPortID" : "C2A23A48-73B2-439E-82FF-E77EFF35B327"
     }
   ],
   "id" : "E02B014A-15CD-4927-A5C3-F73BEC3A730A",
@@ -121,7 +133,7 @@
                     "label" : "Number A",
                     "max" : 1,
                     "min" : 0,
-                    "value" : 0
+                    "value" : 1369.7274
                   },
                   "type" : "float"
                 },
@@ -241,7 +253,7 @@
                     "label" : "Time",
                     "max" : 1,
                     "min" : 0,
-                    "value" : 0
+                    "value" : 1369.7483
                   },
                   "type" : "float"
                 },
@@ -422,7 +434,7 @@
                     "label" : "Number A",
                     "max" : 1,
                     "min" : 0,
-                    "value" : 0
+                    "value" : 81727
                   },
                   "type" : "float"
                 },
@@ -542,7 +554,7 @@
                     "label" : "Number",
                     "max" : 3.4028235e+38,
                     "min" : 1.1754944e-38,
-                    "value" : 0
+                    "value" : 2724.2334
                   },
                   "type" : "float"
                 },
@@ -628,7 +640,7 @@
                     "label" : "Number A",
                     "max" : 1,
                     "min" : 0,
-                    "value" : 0
+                    "value" : 2724
                   },
                   "type" : "float"
                 },
@@ -878,7 +890,7 @@
                     "label" : "Camera Distance",
                     "max" : 1,
                     "min" : 0,
-                    "value" : 7.7
+                    "value" : 4.4
                   },
                   "type" : "float"
                 },
@@ -904,7 +916,7 @@
                     "description" : "Draw the bounds of the visible posed character",
                     "id" : "648D33CF-51CE-43D9-BBCD-7A5A24258B10",
                     "label" : "Draw Bounding Box",
-                    "value" : false
+                    "value" : true
                   },
                   "type" : "bool"
                 },
@@ -1117,7 +1129,7 @@
                     "value" : [
                       1,
                       1,
-                      1
+                      4
                     ]
                   },
                   "type" : "float3"
@@ -1186,8 +1198,8 @@
       "value" : {
         "id" : "D2124899-0286-463E-A70E-D34122FE92BF",
         "nodeOffset" : [
-          640,
-          -230
+          383,
+          174
         ],
         "ports" : [
           {
@@ -1839,11 +1851,385 @@
           }
         ]
       }
+    },
+    {
+      "type" : "graphics.fabric.CoreNodes/ComposeTransformNode",
+      "value" : {
+        "id" : "6AF99246-8C6C-4B06-B4E8-F4FC0DDBB70D",
+        "nodeOffset" : [
+          1047,
+          -348
+        ],
+        "ports" : [
+          {
+            "name" : "inputPosition",
+            "payload" : {
+              "base" : {
+                "id" : "194EE213-D70C-4E8E-9F90-EDB444877865",
+                "kind" : "Inlet",
+                "name" : "Position",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "inputfield",
+                    "defaultValue" : [
+                      0,
+                      0,
+                      0
+                    ],
+                    "description" : "Position (XYZ)",
+                    "id" : "194EE213-D70C-4E8E-9F90-EDB444877865",
+                    "label" : "Position",
+                    "max" : [
+                      1,
+                      1,
+                      1
+                    ],
+                    "min" : [
+                      0,
+                      0,
+                      0
+                    ],
+                    "value" : [
+                      2,
+                      1.2,
+                      7.7
+                    ]
+                  },
+                  "type" : "float3"
+                },
+                "portDescription" : "Position (XYZ)",
+                "published" : false
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Vector 3"
+            }
+          },
+          {
+            "name" : "inputOrientation",
+            "payload" : {
+              "base" : {
+                "id" : "A0F33158-F3D9-41BF-A9C4-2E0D0EF41F7C",
+                "kind" : "Inlet",
+                "name" : "Orientation",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "inputfield",
+                    "defaultValue" : [
+                      0,
+                      0,
+                      0,
+                      1
+                    ],
+                    "description" : "Quaternion orientation (X, Y, Z, W)",
+                    "id" : "A0F33158-F3D9-41BF-A9C4-2E0D0EF41F7C",
+                    "label" : "Orientation",
+                    "max" : [
+                      1,
+                      1,
+                      1,
+                      1
+                    ],
+                    "min" : [
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "value" : [
+                      -0.06298221,
+                      0.10661157,
+                      0,
+                      0.9922809
+                    ]
+                  },
+                  "type" : "float4"
+                },
+                "portDescription" : "Quaternion orientation (X, Y, Z, W)",
+                "published" : false
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Vector 4"
+            }
+          },
+          {
+            "name" : "inputScale",
+            "payload" : {
+              "base" : {
+                "id" : "CF95EA1B-77CB-4CE4-8738-430E7BDFA97F",
+                "kind" : "Inlet",
+                "name" : "Scale",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "inputfield",
+                    "defaultValue" : [
+                      1,
+                      1,
+                      1
+                    ],
+                    "description" : "Scale (XYZ)",
+                    "id" : "CF95EA1B-77CB-4CE4-8738-430E7BDFA97F",
+                    "label" : "Scale",
+                    "max" : [
+                      1,
+                      1,
+                      1
+                    ],
+                    "min" : [
+                      0,
+                      0,
+                      0
+                    ],
+                    "value" : [
+                      1,
+                      1,
+                      1
+                    ]
+                  },
+                  "type" : "float3"
+                },
+                "portDescription" : "Scale (XYZ)",
+                "published" : false
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Vector 3"
+            }
+          },
+          {
+            "name" : "outputTransform",
+            "payload" : {
+              "base" : {
+                "id" : "E7C5D50A-D60A-4B77-9823-2AFA090345FA",
+                "kind" : "Outlet",
+                "name" : "Transform",
+                "portDescription" : "Model matrix (T*R*S)",
+                "published" : false
+              },
+              "isParameterPort" : false,
+              "isProxyPort" : false,
+              "type" : "Transform"
+            }
+          }
+        ],
+        "strategy" : "TRS",
+        "userName" : "Scene Camera Pose"
+      }
+    },
+    {
+      "type" : "graphics.fabric.CoreNodes/SwitchNode",
+      "value" : {
+        "id" : "78B8F277-E318-49D2-9362-8E665EE044D4",
+        "nodeOffset" : [
+          810.4375,
+          -161.125
+        ],
+        "ports" : [
+          {
+            "name" : "inputIndex",
+            "payload" : {
+              "base" : {
+                "id" : "A3DC7F5E-9F82-4E70-884D-30220AA49C82",
+                "kind" : "Inlet",
+                "name" : "Index",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "inputfield",
+                    "defaultValue" : 0,
+                    "description" : "Selected route index",
+                    "id" : "A3DC7F5E-9F82-4E70-884D-30220AA49C82",
+                    "label" : "Camera View",
+                    "max" : 1,
+                    "min" : 0,
+                    "value" : 0
+                  },
+                  "type" : "int"
+                },
+                "portDescription" : "Selected route index",
+                "published" : true,
+                "publishedName" : "Camera View"
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Int"
+            }
+          },
+          {
+            "name" : "input0",
+            "payload" : {
+              "base" : {
+                "id" : "58456DBA-7B1A-44B4-935C-A052AFD0BE5A",
+                "kind" : "Inlet",
+                "name" : "Input 0",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "none",
+                    "defaultValue" : [
+                      [
+                        1,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        1,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        1,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        0,
+                        1
+                      ]
+                    ],
+                    "description" : "Value for route 0",
+                    "id" : "58456DBA-7B1A-44B4-935C-A052AFD0BE5A",
+                    "label" : "Input 0",
+                    "value" : [
+                      [
+                        1,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        1,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        4,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        17.6,
+                        1
+                      ]
+                    ]
+                  },
+                  "type" : "float4x4"
+                },
+                "portDescription" : "Value for route 0",
+                "published" : false
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Transform"
+            }
+          },
+          {
+            "name" : "input1",
+            "payload" : {
+              "base" : {
+                "id" : "EA2067D2-7B39-4A36-9D80-6948160EFAC1",
+                "kind" : "Inlet",
+                "name" : "Input 1",
+                "parameter" : {
+                  "base" : {
+                    "controlType" : "none",
+                    "defaultValue" : [
+                      [
+                        1,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        1,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        1,
+                        0
+                      ],
+                      [
+                        0,
+                        0,
+                        0,
+                        1
+                      ]
+                    ],
+                    "description" : "Value for route 1",
+                    "id" : "EA2067D2-7B39-4A36-9D80-6948160EFAC1",
+                    "label" : "Input 1",
+                    "value" : [
+                      [
+                        0.97726685,
+                        -0.013429879,
+                        -0.21158695,
+                        0
+                      ],
+                      [
+                        -0.013429879,
+                        0.9920661,
+                        -0.1249978,
+                        0
+                      ],
+                      [
+                        0.21158695,
+                        0.1249978,
+                        0.969333,
+                        0
+                      ],
+                      [
+                        2,
+                        1.2,
+                        7.7,
+                        1
+                      ]
+                    ]
+                  },
+                  "type" : "float4x4"
+                },
+                "portDescription" : "Value for route 1",
+                "published" : false
+              },
+              "isParameterPort" : true,
+              "isProxyPort" : false,
+              "type" : "Transform"
+            }
+          },
+          {
+            "name" : "output",
+            "payload" : {
+              "base" : {
+                "id" : "C2A23A48-73B2-439E-82FF-E77EFF35B327",
+                "kind" : "Outlet",
+                "name" : "Output",
+                "portDescription" : "Selected input value",
+                "published" : false
+              },
+              "isParameterPort" : false,
+              "isProxyPort" : false,
+              "type" : "Transform"
+            }
+          }
+        ],
+        "routeCount" : 2,
+        "strategy" : "Transform",
+        "userName" : "Camera Switch"
+      }
     }
   ],
-  "notes" : [
-
-  ],
+  "notes" : [],
   "requiredPlugins" : [
     {
       "id" : "com.jvclabs.BodyMeshProvider",
@@ -1854,8 +2240,6 @@
     }
   ],
   "version" : {
-    "beta" : {
-
-    }
+    "beta" : {}
   }
 }
