@@ -52,9 +52,9 @@ Camera when source-matched framing is desired.
 | `Time` | Input | `Float` | Graph time when unconnected | Playback position in seconds. When connected, this value is authoritative and `Playback Rate` is ignored. |
 | `Loop` | Input | `Bool` | `true` | Wraps playback to the beginning when it reaches the end of the asset. When disabled, playback holds the first or last frame. |
 | `Playback Rate` | Input | `Float` | `1` | Multiplies graph-time playback speed when `Time` is unconnected. Use values below `1` for slower playback, values above `1` for faster playback, or a negative value to play in reverse. |
-| `Confidence` | Input | `Float` | `0.2`; range `0.05...1` | Minimum confidence required for a detected body to be included. |
-| `Maximum Bodies` | Input | `Int` | `1`; range `1...8` | Maximum number of highest-confidence bodies merged into the geometry. |
-| `Primitive` | Input | `String` menu | `Triangle` | Metal primitive used to render the geometry. Body meshes normally use `Triangle`. |
+| `Confidence` | Input | `Float` | `0.2` (range `0.05...1`) | Minimum confidence required for a detected body to be included. |
+| `Maximum Bodies` | Input | `Int` | `1` (range `1...8`) | Maximum number of highest-confidence bodies merged into the geometry. |
+| `Primitive` | Input | `String` | `Triangle` | Selects `Point`, `Line`, `Line Strip`, `Triangle`, or `Triangle Strip`. |
 | `Geometry` | Output | `Geometry` | — | Selected bodies merged into one indexed Satin geometry. Connect this to Fabric's Mesh node. |
 | `Detected Bodies` | Output | `Int` | — | Number of bodies stored in the current frame before confidence filtering. |
 | `Output Bodies` | Output | `Int` | — | Number of bodies included after confidence filtering and the `Maximum Bodies` limit. |
@@ -63,7 +63,7 @@ Camera when source-matched framing is desired.
 | `Frame Count` | Output | `Int` | — | Total number of frames in the selected asset. |
 | `Duration` | Output | `Float` | — | Total asset duration in seconds. |
 | `Frame Available` | Output | `Bool` | — | `true` when at least one body passes filtering for the current frame. |
-| `Source Size` | Output | `Vector2` | — | Encoded source width and height. Connect this to `Body Mesh Intrinsic Camera` for source-matched framing. |
+| `Source Size` | Output | `Vector 2` | — | Encoded source width and height. Connect this to `Body Mesh Intrinsic Camera` for source-matched framing. |
 
 ## Body Mesh Character
 
@@ -89,6 +89,30 @@ toolchain with Swift 6.2 or newer, and read access to the private
 Xcode embeds the OpenUSD and TBB frameworks and the USD schema resources in
 the plug-in. [USDZ update plan](docs/internal/todos/USDZ_CHARACTER_MODEL_UPDATE_PLAN.md)
 
+### Body Mesh Character port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `CoMotion Frame` | Input | `Dictionary of Array of Float` | Optional | Receives a shared frame from CoMotion Data and uses it as the motion source. |
+| `Time` | Input | `Float` | Graph time when unconnected | Selects a local archive frame by time in seconds. |
+| `Loop` | Input | `Bool` | `true` | Wraps local archive playback. Turn it off to hold the endpoint poses. |
+| `Playback Rate` | Input | `Float` | `1` | Multiplies graph-time playback for the local archive when `Time` is unconnected. |
+| `Confidence` | Input | `Float` | `0.2` (range `0.05...1`) | Filters detections by confidence. |
+| `Maximum Bodies` | Input | `Int` | `1` (range `1...8`) | Limits the character instances to the highest-confidence detections. |
+| `Visible` | Input | `Bool` | `true` | Shows or hides the character and all its instances. |
+| `Render Order` | Input | `Int` | `0` | Inherited Fabric input, reserved on this node. |
+| `Position` | Input | `Vector 3` | `(0, 0, 0)` | Places the character in world units. |
+| `Scale` | Input | `Vector 3` | `(1, 1, 1)` | Scales the character along each axis. |
+| `Orientation` | Input | `Vector 4` | `(0, 0, 0, 1)` | Orients the character using an `(x, y, z, w)` quaternion. |
+| `Detected Bodies` | Output | `Int` | — | Number of detections in the current motion frame before filtering. |
+| `Output Bodies` | Output | `Int` | — | Number of detections used to pose character instances. |
+| `Current Frame` | Output | `Int` | — | Zero-based index of the selected motion frame. |
+| `Frame Rate` | Output | `Float` | — | Encoded frame rate of the active motion source. |
+| `Frame Count` | Output | `Int` | — | Total frame count of the active motion source. |
+| `Duration` | Output | `Float` | — | Duration of the active motion source in seconds. |
+| `Frame Available` | Output | `Bool` | — | True when `Output Bodies` is greater than zero. |
+| `Source Size` | Output | `Vector 2` | — | Encoded source width and height. Connect it to Body Mesh Intrinsic Camera. |
+
 ## CoMotion Data
 
 Add **CoMotion Data** from Utility. Choose a CoMotion v2 `.bin` file, a Creator
@@ -101,11 +125,27 @@ model, **Confidence**, and **Maximum Bodies**. **Body Mesh View** accepts the
 same frame output and applies it to the selected USDZ. Connect **Source Size**
 to either body mesh camera for source-framed rendering.
 
+### CoMotion Data port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Time` | Input | `Float` | Graph time when unconnected | Selects an archive frame by time in seconds. A connection sets the playback time directly. |
+| `Loop` | Input | `Bool` | `true` | Wraps playback. Turn it off to hold the first or last frame outside the archive's range. |
+| `Playback Rate` | Input | `Float` | `1` | Multiplies graph-time playback when `Time` is unconnected. Negative values play in reverse. |
+| `CoMotion Frame` | Output | `Dictionary of Array of Float` | — | Contains the selected frame's detections, pose parameters, and motion metadata. |
+| `Source Size` | Output | `Vector 2` | — | Encoded source width and height for camera framing. |
+
 ## Body Mesh Character Asset
 
 Choose a mapped Creator `.usdz` in Settings. The **Character** outlet sends its
 file reference as a Fabric string. The source node can drive more than one
 **Body Mesh View**.
+
+### Body Mesh Character Asset port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Character` | Output | `String` | Choose a USDZ in Settings | Sends the file reference to Body Mesh View or Character Inspector. |
 
 ## Character Inspector
 
@@ -140,6 +180,16 @@ The slot can also take the asset's **Character** output directly. Each slot
 can have its own overrides when both refer to the same USDZ.
 [Character Inspector update plan](docs/internal/todos/CHARACTER_INSPECTOR_UPDATE_PLAN.md)
 
+### Character Inspector port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Character` | Input | `Virtual` | Connect a Character output | Accepts a USDZ file reference from an asset or the result of another inspector. |
+| `<Mesh> Visible` | Input | `Bool` | `true` (expose in Settings) | Controls every surface on the selected mesh. |
+| `<Material> Material Visible` | Input | `Bool` | `true` (expose in Settings) | Controls every surface bound to the selected USD material. A surface draws when both its mesh and material visibility allow it. |
+| `<Material> Material` | Input | `Material` | Expose in Settings, then wire a Fabric material | Replaces the material on every surface bound to the selected USD material. An empty inlet uses the incoming character's material choice. |
+| `Character` | Output | `Virtual` | — | Sends the USDZ reference and its overrides to Body Mesh View or another inspector. |
+
 ## Body Mesh View
 
 Connect the **Character** output from a **Body Mesh Character Asset** or a
@@ -155,13 +205,59 @@ Turn on **Draw Bounding Box** to render a wireframe around the active pose's
 visible meshes. The box follows the view and appears in preview and export.
 
 **Camera Distance** sets the pivot depth measured from the capture eye.
-Connect the view's **Camera Transform** and the motion source's **Source Size**
-to a **Body Mesh View Camera**. The camera follows the view and retains the
-source framing. Other Fabric cameras can see the view in the scene.
+
+### Body Mesh View port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Character A` | Input | `Virtual` | Connect a Character output for index `0` | Accepts a USDZ file reference from an asset or a character with inspector overrides. |
+| `Character B` | Input | `Virtual` | Connect a Character output for index `1` | Optional second character slot with the same accepted values as `Character A`. |
+| `Character Index` | Input | `Int` | `0` (range `0...1`) | Selects `Character A` at `0` or `Character B` at `1`. |
+| `CoMotion Frame` | Input | `Dictionary of Array of Float` | Connect CoMotion Data | Supplies the detections and poses for the selected character. |
+| `Camera Distance` | Input | `Float` | `0` (nonnegative) | Sets the distance from the capture eye to the view pivot in scene units. |
+| `Draw Bounding Box` | Input | `Bool` | `false` | Draws the posed bounds of the visible character meshes. |
+| `Confidence` | Input | `Float` | `0.2` (range `0.05...1`) | Filters detections from the incoming frame by confidence. |
+| `Maximum Bodies` | Input | `Int` | `1` (range `1...8`) | Limits the character instances to the highest-confidence detections. |
+| `Visible` | Input | `Bool` | `true` | Shows or hides the view in the scene. |
+| `Render Order` | Input | `Int` | `0` | Inherited Fabric input, reserved on this node. |
+| `Position` | Input | `Vector 3` | `(0, 0, 0)` | Places the view pivot in world units. |
+| `Scale` | Input | `Vector 3` | `(1, 1, 1)` | Scales the view along each axis. Each factor must be positive. |
+| `Orientation` | Input | `Vector 4` | `(0, 0, 0, 1)` | Orients the view using an `(x, y, z, w)` quaternion. |
+| `Camera Transform` | Output | `Transform` | — | World transform of the capture eye. Connect it to Body Mesh View Camera to follow the view. |
+
+## Body Mesh View Camera
+
+Connect **Camera Transform** from **Body Mesh View** and **Source Size** from
+**CoMotion Data**. The camera follows the view and retains the source framing.
+Other Fabric cameras can see the view in the scene.
+
+### Body Mesh View Camera port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Camera Transform` | Input | `Transform` | Optional | Sets the camera's world transform from Body Mesh View. An empty inlet uses the camera's local pose. |
+| `Source Size` | Input | `Vector 2` | `(1920, 1080)` | Encoded source width and height used to calculate the field of view. |
+| `Orientation` | Input | `Vector 4` | `(0, 0, 0, 1)` | Local camera orientation as an `(x, y, z, w)` quaternion. |
+| `Scale` | Input | `Vector 3` | `(1, 1, 1)` | Local camera scale along each axis. |
+| `Position` | Input | `Vector 3` | `(0, 0, 0)` | Local camera position in world units. |
+| `Visible` | Input | `Bool` | `true` | Sets the camera object's visibility flag. Fabric selects the active camera by scene order. |
+| `Render Order` | Input | `Int` | `0` | Inherited Fabric input, reserved on this node. |
+
+## Body Mesh View Group
 
 The **Body Mesh View Group** is the subgraph node used by earlier scenes. It
 places its contents together, including a child **Body Mesh Intrinsic Camera**
 and any lights authored inside the group.
+
+### Body Mesh View Group port reference
+
+| Port | Direction | Fabric type | Default or requirement | Description |
+| --- | --- | --- | --- | --- |
+| `Position` | Input | `Vector 3` | `(0, 0, 0)` | Places the group pivot in world units. |
+| `Orientation` | Input | `Vector 4` | `(0, 0, 0, 1)` | Orients the group using an `(x, y, z, w)` quaternion. |
+| `Scale` | Input | `Float` | `1` (positive) | Scales the group uniformly. |
+| `Camera Distance` | Input | `Float` | `0` (nonnegative) | Sets the distance from the source camera to the group pivot in scene units. |
+| `<Published port>` | Input or Output | Matches the inner port | Publish a port inside the group | Exposes the published name, direction, and type on the group node. |
 
 ## Body Mesh Intrinsic Camera
 
@@ -187,12 +283,12 @@ cameras remain fully supported when source-matched framing is not required.
 
 | Port | Direction | Fabric type | Default or requirement | Description |
 | --- | --- | --- | --- | --- |
-| `Source Size` | Input | `Vector2` | `(1920, 1080)` | Encoded source width and height. Connect the provider's `Source Size` output here. |
-| `Orientation` | Input | `Vector4` | `(0, 0, 0, 1)` | Camera orientation as an `(x, y, z, w)` quaternion. The identity orientation looks along Fabric's negative Z axis. |
-| `Scale` | Input | `Vector3` | `(1, 1, 1)` | Scales the camera view along each axis. |
-| `Position` | Input | `Vector3` | `(0, 0, 0)` | Camera position in world units. Generated body meshes are calibrated with the camera at the origin. |
-| `Visible` | Input | `Bool` | `true` | Inherited Fabric object visibility. Active-camera selection still follows Fabric's last-added-camera behavior. |
-| `Render Order` | Input | `Int` | `0` | Inherited Fabric object setting; normally left at `0` for a camera. |
+| `Source Size` | Input | `Vector 2` | `(1920, 1080)` | Encoded source width and height. Connect the provider's `Source Size` output here. |
+| `Orientation` | Input | `Vector 4` | `(0, 0, 0, 1)` | Camera orientation as an `(x, y, z, w)` quaternion. The identity orientation looks along Fabric's negative Z axis. |
+| `Scale` | Input | `Vector 3` | `(1, 1, 1)` | Scales the camera view along each axis. |
+| `Position` | Input | `Vector 3` | `(0, 0, 0)` | Camera position in world units. Generated body meshes are calibrated with the camera at the origin. |
+| `Visible` | Input | `Bool` | `true` | Sets the camera object's visibility flag. Fabric selects the active camera by scene order. |
+| `Render Order` | Input | `Int` | `0` | Inherited Fabric input, reserved on this node. |
 
 Body Mesh Intrinsic Camera has no output ports. Fabric discovers camera nodes in
 the graph directly and uses its normal active-camera selection behavior.
