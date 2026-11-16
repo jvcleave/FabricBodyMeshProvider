@@ -51,8 +51,8 @@
         "characterModelURL" : "Character%20Switching/human2.usdz",
         "id" : "D7F11C33-4AC9-4560-8B70-327434C79006",
         "nodeOffset" : [
-          -410,
-          -185
+          -393,
+          -347
         ],
         "ports" : [
           {
@@ -79,8 +79,8 @@
       "value" : {
         "id" : "6373CF63-A7EF-4AA4-BD40-CEB82414B715",
         "nodeOffset" : [
-          -410,
-          -72
+          -412,
+          84
         ],
         "ports" : [
           {
