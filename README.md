@@ -14,6 +14,14 @@ and placement with **Body Mesh View Camera**. **Body Mesh Character** also
 supports a self-contained character, and **Body Mesh Provider** supplies
 geometry for Fabric meshes.
 
+## Asset paths
+
+Leave **Store Absolute Path** off in a model, motion archive, or asset folder
+picker to save a relative path for assets inside the scene directory. Assets
+elsewhere use absolute URLs. Turn the option on to keep the selected location
+fixed when you move the scene. **Body Mesh Character** has a separate option
+for its model and motion archive.
+
 ## Body Mesh Provider
 
 **Body Mesh Provider** is a time-based geometry node that reads a prepared
@@ -374,28 +382,22 @@ USDZs and `motiondata.bin`.
 Open [Character-sample.fabric](FabricScenes/Character-sample.fabric). It
 connects **Source Size** to **Body Mesh Intrinsic Camera** and uses **Built-in**
 with the included [24sectest archive](FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A).
+The checked-in scene references that archive folder relative to the graph.
 Keep the graph beside the archive folder when moving the sample. In the node's
 Settings, choose a Creator USDZ to see it follow the same motion or choose
 another archive to keep moving the same model with a different capture.
-Saving the scene in Fabric records the resolved archive URL for movie export.
 
 ### Geometry provider sample
 
 Open [`FabricScenes/Sample.fabric`](FabricScenes/Sample.fabric) for a basic
-working scene. The scene's sample asset is included at
-[`FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A`](FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A),
-but Fabric stores selected folders as absolute URLs. After cloning the
-repository, re-link it once:
-
-1. Select the **Body Mesh Provider** node in the sample scene.
-2. Open its Settings and choose **Choose Asset Folder**.
-3. Select the included `FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A`
-   folder—not its individual `frames.bin` file.
+working scene. Its **Asset Folder** points to the included
+[24sectest folder](FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A) relative
+to the scene. Keep the scene and asset folder together when moving the sample.
 
 ### Four-body camera sample
 
 Open [`FabricScenes/Camera-sample.fabric`](FabricScenes/Camera-sample.fabric)
-and re-link the included asset folder as described above. For the original
+with the included 24sectest folder beside it. For the original
 four-performer example, expand the release archive and select its
 `C00F9E45-6C83-4760-A700-BBF2A37D0380` directory in Body Mesh Provider Settings.
 [Four-performer archive](https://github.com/jvcleave/FabricBodyMeshProvider/releases/download/1.0/C00F9E45-6C83-4760-A700-BBF2A37D0380.zip)

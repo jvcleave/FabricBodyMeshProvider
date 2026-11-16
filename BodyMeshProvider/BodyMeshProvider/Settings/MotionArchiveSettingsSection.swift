@@ -4,7 +4,9 @@ import UniformTypeIdentifiers
 struct MotionArchiveSettingsSection: View
 {
     @State var archiveURL: URL?
+    let storesAbsolutePath: Bool
     let selectArchive: (URL?) -> Void
+    let setPathStorage: (Bool) -> Void
 
     @State private var isChoosingArchive = false
 
@@ -25,6 +27,7 @@ struct MotionArchiveSettingsSection: View
                     selectArchive(nil)
                 }
             }
+            StoreAbsolutePathToggle(isOn: storesAbsolutePath, update: setPathStorage)
         }
         .fileImporter(
             isPresented: $isChoosingArchive,

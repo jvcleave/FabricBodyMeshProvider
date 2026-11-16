@@ -40,6 +40,9 @@ struct BodyMeshProviderSettingsView: View
                     }
                 }
 
+                Toggle("Store Absolute Path", isOn: $model.storesAbsolutePath)
+                    .help("Keep pointing to this location when the scene moves.")
+
                 if let importErrorMessage = model.importErrorMessage
                 {
                     Text(importErrorMessage)

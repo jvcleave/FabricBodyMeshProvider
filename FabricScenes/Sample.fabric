@@ -1552,7 +1552,7 @@
           -287.57421875
         ],
         "providerSettings" : {
-          "assetFolderURLString" : "file:\/\/\/Users\/jvcleave\/Documents\/WORK_IN_PROGRESS\/MAC_APPS\/BodyMeshProvider\/FabricScenes\/947B44F8-C4C3-4666-93B5-73BD71CE231A\/"
+          "assetFolderURLString" : "947B44F8-C4C3-4666-93B5-73BD71CE231A"
         }
       },
       "type" : "com.jvclabs.BodyMeshProvider\/BodyMeshProviderNode"

@@ -1,4 +1,5 @@
 import BodyMeshProviderCore
+import Fabric
 import Foundation
 import os
 
@@ -50,6 +51,26 @@ enum BodyMeshProviderResources
               let resolved = URL(string: url.relativeString, relativeTo: directory)?.absoluteURL
         else { return url }
         return resolved.standardizedFileURL
+    }
+
+    static func fileURLForSaving(_ url: URL?, relativeTo directory: URL?, storeAbsolutePath: Bool) -> URL?
+    {
+        guard let url, let resolvedURL = resolveFileURL(url, relativeTo: directory), resolvedURL.isFileURL
+        else { return url }
+        if storeAbsolutePath { return resolvedURL.standardizedFileURL }
+        // Keep existing relative URLs as written. They travel with the scene.
+        guard url.isFileURL || url.relativeString.hasPrefix("/") else { return url }
+
+        let reference = resolvedURL.fileReference(relativeTo: directory)
+        guard !reference.hasPrefix("file://") else { return resolvedURL.standardizedFileURL }
+
+        // These settings encode URLs. Escape literal percent signs and colons
+        // so the relative path also decodes as a URL on older plug-in builds.
+        let allowedCharacters = CharacterSet.urlPathAllowed.subtracting(CharacterSet(charactersIn: "%:"))
+        guard let encodedPath = reference.addingPercentEncoding(withAllowedCharacters: allowedCharacters),
+              let relativeURL = URL(string: encodedPath)
+        else { return resolvedURL.standardizedFileURL }
+        return relativeURL
     }
 
     static func motionArchive(_ url: URL) throws -> CoMotionArchiveReader

@@ -31,8 +31,7 @@ public final class CoMotionDataNode: Node
 
     public override var settings: (any NodeSettings)?
     {
-        let directory = graph?.fileReferenceBaseURL
-        return sourceRequest.withLock { $0.settings.resolvingArchive(relativeTo: directory) }
+        sourceRequest.withLock { $0.settings }.savingArchive(relativeTo: graph?.fileReferenceBaseURL)
     }
 
     public override class func registerPorts(context: Context) -> [(name: String, port: Fabric.Port)]
@@ -73,9 +72,14 @@ public final class CoMotionDataNode: Node
     public override func apply(_ settings: any NodeSettings)
     {
         guard let settings = settings as? CoMotionDataSettings else { return }
+        let directory = graph?.fileReferenceBaseURL
+        let archiveURL = settings.resolvingArchive(relativeTo: directory).motionArchiveURL
         sourceRequest.withLock { request in
+            if request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL != archiveURL
+            {
+                request.revision &+= 1
+            }
             request.settings = settings
-            request.revision &+= 1
         }
     }
 
@@ -86,18 +90,30 @@ public final class CoMotionDataNode: Node
     {
         performOnMainSync
         {
-            let archiveURL = sourceRequest.withLock { $0.settings.motionArchiveURL }
-            let section = MotionArchiveSettingsSection(archiveURL: archiveURL) { [weak self] url in
-                guard let self else { return }
-                let directory = self.graph?.fileReferenceBaseURL
-                self.sourceRequest.withLock { request in
-                    if request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL == url
-                    {
-                        request.revision &+= 1
+            let settings = sourceRequest.withLock { $0.settings }
+            let section = MotionArchiveSettingsSection(
+                archiveURL: settings.resolvingArchive(relativeTo: graph?.fileReferenceBaseURL).motionArchiveURL,
+                storesAbsolutePath: settings.storeAbsoluteArchivePath == true,
+                selectArchive: { [weak self] url in
+                    guard let self else { return }
+                    let directory = self.graph?.fileReferenceBaseURL
+                    var settings = self.sourceRequest.withLock { request in
+                        if request.settings.resolvingArchive(relativeTo: directory).motionArchiveURL == url
+                        {
+                            request.revision &+= 1
+                        }
+                        return request.settings
                     }
+                    settings.motionArchiveURL = url
+                    self.setSettings(settings.savingArchive(relativeTo: directory))
+                },
+                setPathStorage: { [weak self] enabled in
+                    guard let self else { return }
+                    var settings = self.sourceRequest.withLock { $0.settings }
+                    settings.storeAbsoluteArchivePath = enabled ? true : nil
+                    self.setSettings(settings.savingArchive(relativeTo: self.graph?.fileReferenceBaseURL))
                 }
-                self.setSettings(CoMotionDataSettings(motionArchiveURL: url))
-            }
+            )
             return AnyView(Form { section }.formStyle(.grouped))
         }
     }

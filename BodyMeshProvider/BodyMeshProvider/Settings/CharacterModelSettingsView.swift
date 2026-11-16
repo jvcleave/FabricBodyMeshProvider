@@ -3,17 +3,29 @@ import UniformTypeIdentifiers
 
 struct CharacterModelSettingsView: View
 {
-    let modelURL: URL?
-    let archiveURL: URL?
+    let settings: CharacterModelSettings
     let selectModel: (URL?) -> Void
     let selectArchive: (URL?) -> Void
+    let setModelPathStorage: (Bool) -> Void
+    let setArchivePathStorage: (Bool) -> Void
 
     var body: some View
     {
         Form
         {
-            CharacterModelSettingsSection(modelURL: modelURL, allowsBuiltIn: true, selectModel: selectModel)
-            MotionArchiveSettingsSection(archiveURL: archiveURL, selectArchive: selectArchive)
+            CharacterModelSettingsSection(
+                modelURL: settings.characterModelURL,
+                allowsBuiltIn: true,
+                storesAbsolutePath: settings.storeAbsoluteModelPath == true,
+                selectModel: selectModel,
+                setPathStorage: setModelPathStorage
+            )
+            MotionArchiveSettingsSection(
+                archiveURL: settings.motionArchiveURL,
+                storesAbsolutePath: settings.storeAbsoluteArchivePath == true,
+                selectArchive: selectArchive,
+                setPathStorage: setArchivePathStorage
+            )
         }
         .formStyle(.grouped)
     }
@@ -23,7 +35,9 @@ struct CharacterModelSettingsSection: View
 {
     @State var modelURL: URL?
     let allowsBuiltIn: Bool
+    let storesAbsolutePath: Bool
     let selectModel: (URL?) -> Void
+    let setPathStorage: (Bool) -> Void
 
     @State private var isChoosingModel = false
 
@@ -47,6 +61,7 @@ struct CharacterModelSettingsSection: View
                     selectModel(nil)
                 }
             }
+            StoreAbsolutePathToggle(isOn: storesAbsolutePath, update: setPathStorage)
         }
         .fileImporter(isPresented: $isChoosingModel, allowedContentTypes: [.usdz]) { result in
             if case let .success(url) = result
@@ -56,5 +71,23 @@ struct CharacterModelSettingsSection: View
                 selectModel(selectedURL)
             }
         }
+    }
+}
+
+struct StoreAbsolutePathToggle: View
+{
+    @State var isOn: Bool
+    let update: (Bool) -> Void
+
+    var body: some View
+    {
+        Toggle("Store Absolute Path", isOn: Binding(
+            get: { isOn },
+            set: { newValue in
+                isOn = newValue
+                update(newValue)
+            }
+        ))
+        .help("Keep pointing to this location when the scene moves.")
     }
 }

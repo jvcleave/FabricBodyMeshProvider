@@ -114,25 +114,28 @@ final class BodyMeshProviderSettingsModel
     var importErrorMessage: String?
     private(set) var runtimeStatus: BodyMeshProviderRuntimeStatus
 
+    @ObservationIgnored private let sceneDirectory: () -> URL?
     @ObservationIgnored private let updateSettings: (BodyMeshProviderSettings) -> Void
     @ObservationIgnored private let reloadAsset: () -> Void
 
     init(
         settings: BodyMeshProviderSettings,
         runtimeStatus: BodyMeshProviderRuntimeStatus,
+        sceneDirectory: @escaping () -> URL?,
         updateSettings: @escaping (BodyMeshProviderSettings) -> Void,
         reloadAsset: @escaping () -> Void
     )
     {
         self.settings = settings
         self.runtimeStatus = runtimeStatus
+        self.sceneDirectory = sceneDirectory
         self.updateSettings = updateSettings
         self.reloadAsset = reloadAsset
     }
 
     var assetFolderDisplayName: String
     {
-        guard let assetFolderURL = settings.assetFolderURL else { return "No folder selected" }
+        guard let assetFolderURL = settings.assetFolderURL(relativeTo: sceneDirectory()) else { return "No folder selected" }
         return assetFolderURL.lastPathComponent
     }
 
@@ -173,21 +176,33 @@ final class BodyMeshProviderSettingsModel
 
     var canReloadAsset: Bool
     {
-        settings.assetFolderURL != nil
+        settings.assetFolderURL(relativeTo: sceneDirectory()) != nil
+    }
+
+    var storesAbsolutePath: Bool
+    {
+        get { settings.storeAbsolutePath == true }
+        set
+        {
+            settings.storeAbsolutePath = newValue ? true : nil
+            settings = settings.savingAssetFolder(relativeTo: sceneDirectory())
+            updateSettings(settings)
+        }
     }
 
     func selectAssetFolder(_ selectedURL: URL)
     {
         let standardizedURL = selectedURL.standardizedFileURL
-        let folderURLString = standardizedURL.absoluteString
+        var selection = settings
+        selection.setAssetFolder(standardizedURL, relativeTo: sceneDirectory())
         importErrorMessage = nil
-        if settings.assetFolderURLString == folderURLString
+        if selection == settings
         {
             requestReload()
             return
         }
 
-        settings.assetFolderURLString = folderURLString
+        settings = selection
         runtimeStatus = .awaitingLoad(assetFolderURL: standardizedURL)
         updateSettings(settings)
     }
@@ -207,7 +222,7 @@ final class BodyMeshProviderSettingsModel
 
     func requestReload()
     {
-        guard let assetFolderURL = settings.assetFolderURL else { return }
+        guard let assetFolderURL = settings.assetFolderURL(relativeTo: sceneDirectory()) else { return }
         runtimeStatus = .awaitingLoad(assetFolderURL: assetFolderURL)
         reloadAsset()
     }

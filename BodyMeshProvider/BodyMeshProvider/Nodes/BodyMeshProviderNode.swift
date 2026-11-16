@@ -34,8 +34,16 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private lazy var bodyMeshGeometry = BodyMeshGeometry(context: context)
     public override var geometry: Geometry { bodyMeshGeometry }
 
+    private struct AssetSource: Equatable
+    {
+        let settings: BodyMeshProviderSettings
+        let directory: URL?
+
+        var folderURL: URL? { settings.assetFolderURL(relativeTo: directory) }
+    }
+
     private var archiveReader: CoMotionArchiveReader?
-    private var attemptedAssetFolderURLString: String?
+    private var attemptedAssetSource: AssetSource?
     private var assetLoadError: (any Error)?
     private var lastEvaluationKey: BodyMeshFrameSelection?
     private var hasPublishedGeometry = false
@@ -92,7 +100,8 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     {
         try super.encode(to: encoder)
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(providerSettings, forKey: .providerSettings)
+        let savedSettings = providerSettings.savingAssetFolder(relativeTo: graph?.fileReferenceBaseURL)
+        try container.encode(savedSettings, forKey: .providerSettings)
     }
 
     public func setProviderSettings(_ settings: BodyMeshProviderSettings)
@@ -113,6 +122,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             let model = settingsModel ?? BodyMeshProviderSettingsModel(
                 settings: providerSettings,
                 runtimeStatus: runtimeStatus,
+                sceneDirectory: { [weak self] in self?.graph?.fileReferenceBaseURL },
                 updateSettings:
                 { [weak self] settings in
                     self?.setProviderSettings(settings)
@@ -150,10 +160,11 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             geometry: geometry,
             atTime: executionInfo.timing.time
         )
+        let assetSource = AssetSource(settings: providerSettings, directory: graph?.fileReferenceBaseURL)
         var requestedFrameIndex: Int?
         do
         {
-            try loadAssetIfNeeded()
+            try loadAssetIfNeeded(assetSource)
 
             guard let archiveReader else
             {
@@ -225,7 +236,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             if archiveReader == nil
             {
                 publishEmptyState()
-                if let assetFolderURL = providerSettings.assetFolderURL
+                if let assetFolderURL = assetSource.folderURL
                 {
                     updateRuntimeStatus(
                         .incompatible(
@@ -234,7 +245,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                         )
                     )
                 }
-                else if providerSettings.assetFolderURLString.isEmpty == false
+                else if assetSource.settings.assetFolderURLString.isEmpty == false
                 {
                     updateRuntimeStatus(
                         .incompatible(
@@ -260,10 +271,9 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         }
     }
 
-    private func loadAssetIfNeeded() throws
+    private func loadAssetIfNeeded(_ assetSource: AssetSource) throws
     {
-        let selectedURLString = providerSettings.assetFolderURLString
-        guard selectedURLString != attemptedAssetFolderURLString else
+        guard assetSource != attemptedAssetSource else
         {
             if let assetLoadError
             {
@@ -276,15 +286,15 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         assetLoadError = nil
         lastEvaluationKey = nil
         hasPublishedGeometry = false
-        attemptedAssetFolderURLString = selectedURLString
+        attemptedAssetSource = assetSource
 
-        guard selectedURLString.isEmpty == false else
+        guard assetSource.settings.assetFolderURLString.isEmpty == false else
         {
             publishEmptyState()
             updateRuntimeStatus(.noAssetSelected)
             return
         }
-        guard let assetFolderURL = providerSettings.assetFolderURL else
+        guard let assetFolderURL = assetSource.folderURL else
         {
             assetLoadError = BodyMeshProviderNodeError.invalidAssetFolderURL
             throw BodyMeshProviderNodeError.invalidAssetFolderURL
@@ -346,7 +356,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private func invalidateLoadedAsset()
     {
         archiveReader = nil
-        attemptedAssetFolderURLString = nil
+        attemptedAssetSource = nil
         assetLoadError = nil
         lastEvaluationKey = nil
         hasPublishedGeometry = false
@@ -355,7 +365,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private func reloadAsset()
     {
         invalidateLoadedAsset()
-        let status = providerSettings.assetFolderURL.map(BodyMeshProviderRuntimeStatus.awaitingLoad)
+        let status = providerSettings.assetFolderURL(relativeTo: graph?.fileReferenceBaseURL).map(BodyMeshProviderRuntimeStatus.awaitingLoad)
             ?? .noAssetSelected
         updateRuntimeStatus(status)
         markDirty()

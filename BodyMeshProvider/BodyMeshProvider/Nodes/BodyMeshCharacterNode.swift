@@ -45,9 +45,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     public override var object: Object? { sceneObject }
     public override var settings: (any NodeSettings)?
     {
-        // Export serializes the settings without copying the document directory.
-        let directory = graph?.fileReferenceBaseURL
-        return sourceRequest.withLock { $0.settings.resolvingSources(relativeTo: directory) }
+        sourceRequest.withLock { $0.settings }.savingSources(relativeTo: graph?.fileReferenceBaseURL)
     }
 
     public override class func registerPorts(context: Context) -> [(name: String, port: Fabric.Port)]
@@ -110,42 +108,56 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     }
 
     public override func providesSettingsView() -> Bool { true }
-    public override var settingsSize: SettingsViewSize { .Medium }
+    public override var settingsSize: SettingsViewSize { .Large }
 
     public override func settingsView() -> AnyView
     {
         performOnMainSync
         {
-            let settings = sourceRequest.withLock { $0.settings }
+            let settings = sourceRequest.withLock { $0.settings }.resolvingSources(relativeTo: graph?.fileReferenceBaseURL)
             return AnyView(CharacterModelSettingsView(
-                modelURL: settings.characterModelURL,
-                archiveURL: settings.motionArchiveURL,
+                settings: settings,
                 selectModel: { [weak self] url in
                     guard let self else { return }
                     let directory = self.graph?.fileReferenceBaseURL
-                    let settings = self.sourceRequest.withLock { request in
+                    var settings = self.sourceRequest.withLock { request in
                         if request.settings.resolvingSources(relativeTo: directory).characterModelURL == url
                         {
                             request.modelRevision &+= 1
                         }
                         return request.settings
                     }
-                    self.setSettings(CharacterModelSettings(characterModelURL: url, motionArchiveURL: settings.motionArchiveURL))
+                    settings.characterModelURL = url
+                    self.setSettings(settings.savingSources(relativeTo: directory))
                 },
                 selectArchive: { [weak self] url in
                     guard let self else { return }
                     let directory = self.graph?.fileReferenceBaseURL
-                    let settings = self.sourceRequest.withLock { request in
+                    var settings = self.sourceRequest.withLock { request in
                         if request.settings.resolvingSources(relativeTo: directory).motionArchiveURL == url
                         {
                             request.archiveRevision &+= 1
                         }
                         return request.settings
                     }
-                    self.setSettings(CharacterModelSettings(characterModelURL: settings.characterModelURL, motionArchiveURL: url))
+                    settings.motionArchiveURL = url
+                    self.setSettings(settings.savingSources(relativeTo: directory))
+                },
+                setModelPathStorage: { [weak self] enabled in
+                    self?.updatePathStorage(\.storeAbsoluteModelPath, enabled: enabled)
+                },
+                setArchivePathStorage: { [weak self] enabled in
+                    self?.updatePathStorage(\.storeAbsoluteArchivePath, enabled: enabled)
                 }
             ))
         }
+    }
+
+    private func updatePathStorage(_ field: WritableKeyPath<CharacterModelSettings, Bool?>, enabled: Bool)
+    {
+        var settings = sourceRequest.withLock { $0.settings }
+        settings[keyPath: field] = enabled ? true : nil
+        setSettings(settings.savingSources(relativeTo: graph?.fileReferenceBaseURL))
     }
 
     public override func stopExecution(renderer: GraphRenderer) throws
