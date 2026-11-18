@@ -67,11 +67,20 @@ Camera when source-matched framing is desired.
 Add **Body Mesh Character** from Fabric's Loader group. The **Built-in** model
 uses the same body reconstruction as the geometry provider. In Settings,
 **Choose Character Model** opens a mapped Creator `.usdz` and **Use Built-in**
-switches back to the built-in body. **Choose Motion Archive** accepts a Creator
-`.messcapture` or generator folder containing `frames.bin`. An imported model
-uses its reference pose until an archive is selected. With an archive, either
-model uses the playback inputs in the table above and draws each selected
-detection with its own pose and root translation.
+switches back to the built-in body for full v2 recordings. **Choose Motion
+Archive** accepts a `frames.bin` file, a Creator `.messcapture`, or a generator
+folder containing the archive. An imported model uses its reference pose
+until an archive is selected.
+
+| Archive | Body Mesh Character with mapped Creator USDZ | Built-in body or Body Mesh Provider geometry |
+| --- | --- | --- |
+| Compact Creator v3 | Supported | Requires a mapped USDZ in Body Mesh Character |
+| Full CoMotion v2 | Supported for rigid character poses | Supported, including recorded body shape |
+
+To use the neutral Human, export an unedited **NEW HUMAN** in Creator as
+**USDZ** with **NO MOTION**. Choose that file as the Character Model and
+Creator’s **EXPORT FRAMES** output as the Motion Archive. The node draws
+each selected person with its own pose and camera translation.
 
 Imported textures respond to Satin lighting. Character surfaces use the
 authored alpha cutoff in both the visible image and the shadow map.

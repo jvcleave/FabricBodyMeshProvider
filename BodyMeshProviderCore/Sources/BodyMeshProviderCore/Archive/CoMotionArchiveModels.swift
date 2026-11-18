@@ -3,6 +3,7 @@ import Foundation
 public enum CoMotionArchiveFormat
 {
     public static let formatVersion: UInt32 = 2
+    public static let rigFormatVersion: UInt32 = 3
     public static let meshSchemaVersion: UInt32 = 1
     public static let modelCompatibilityVersion: UInt32 = 2
     public static let smplCompatibilityVersion: UInt32 = 1
@@ -66,6 +67,13 @@ public enum CoMotionFrameFailureCode: UInt32, Equatable, Sendable
     case videoDecode = 1
     case prediction = 2
     case invalidPredictionOutput = 3
+}
+
+public struct CoMotionRigPerson: Sendable
+{
+    public let confidence: Float
+    public let skinningTransforms: [Float]
+    public let translation: SIMD3<Float>
 }
 
 public struct CoMotionFramePerson: Equatable, Sendable

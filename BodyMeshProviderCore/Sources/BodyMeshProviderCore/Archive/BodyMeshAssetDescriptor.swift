@@ -61,7 +61,8 @@ public struct BodyMeshAssetDescriptor: Codable, Equatable, Sendable
     public func validate(archiveReader: CoMotionArchiveReader) throws
     {
         let metadata = archiveReader.metadata
-        guard width == metadata.encodedWidth,
+        guard payloadFormatVersion == archiveReader.formatVersion,
+              width == metadata.encodedWidth,
               height == metadata.encodedHeight,
               frameRate == metadata.encodedFrameRate,
               frameCount == archiveReader.frameCount,

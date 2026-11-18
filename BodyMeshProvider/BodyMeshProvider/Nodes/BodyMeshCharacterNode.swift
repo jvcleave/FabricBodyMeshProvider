@@ -178,16 +178,27 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                 requestedFrameIndex = frame.frameIndex
                 if frame != lastFrame
                 {
-                    let recordedFrame = try archive.frameAtIndex(frame.frameIndex)
-                    let people: [CoMotionFramePerson]
-                    if case let .available(detections) = recordedFrame.status { people = detections }
-                    else { people = [] }
-                    let selected = frame.select(people)
-                    detectedBodies = people.count
-                    try importedCharacter?.prepare(selected)
-                    try builtInCharacter?.prepare(selected)
-                    let hasCharacter = importedCharacter != nil || builtInCharacter != nil
-                    publishFrame(index: frame.frameIndex, detected: detectedBodies, output: hasCharacter ? selected.count : 0)
+                    let outputCount: Int
+                    if let importedCharacter
+                    {
+                        let people = try archive.rigPeople(at: frame.frameIndex)
+                        let selected = frame.select(people, confidence: \.confidence)
+                        detectedBodies = people.count
+                        try importedCharacter.prepare(selected)
+                        outputCount = selected.count
+                    }
+                    else
+                    {
+                        let recorded = try archive.frameAtIndex(frame.frameIndex)
+                        let people: [CoMotionFramePerson]
+                        if case let .available(detections) = recorded.status { people = detections }
+                        else { people = [] }
+                        let selected = frame.select(people, confidence: \.confidence)
+                        detectedBodies = people.count
+                        try builtInCharacter?.prepare(selected)
+                        outputCount = builtInCharacter == nil ? 0 : selected.count
+                    }
+                    publishFrame(index: frame.frameIndex, detected: detectedBodies, output: outputCount)
                     lastFrame = frame
                 }
                 else
@@ -282,6 +293,15 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         guard url.isFileURL else { throw CharacterModelError.resources("The motion archive requires a local file URL.") }
 
         let archive = try waitForSource {
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+            let resource = try url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .fileSizeKey])
+            if resource.isRegularFile == true
+            {
+                guard let size = resource.fileSize, size <= CoMotionArchiveFormat.maximumArchiveByteCount
+                else { throw CoMotionArchiveReaderError.exceedsSizeLimit }
+                return try CoMotionArchiveReader(data: Data(contentsOf: url, options: .mappedIfSafe))
+            }
             let archive = try CoMotionArchiveReader(directoryURL: url)
             let descriptor = try BodyMeshAssetDescriptor.loadIfPresent(directoryURL: url)
             try descriptor?.validate(archiveReader: archive)

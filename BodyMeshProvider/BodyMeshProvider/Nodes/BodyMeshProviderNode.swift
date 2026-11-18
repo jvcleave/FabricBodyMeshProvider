@@ -193,7 +193,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                     people = []
             }
 
-            let selectedPeople = evaluationKey.select(people)
+            let selectedPeople = evaluationKey.select(people, confidence: \.confidence)
 
             if selectedPeople.isEmpty
             {
@@ -294,6 +294,8 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         do
         {
             let newArchiveReader = try CoMotionArchiveReader(directoryURL: assetFolderURL)
+            guard newArchiveReader.formatVersion == CoMotionArchiveFormat.formatVersion
+            else { throw CoMotionArchiveReaderError.requiresCharacterModel }
             let descriptor = try BodyMeshAssetDescriptor.loadIfPresent(
                 directoryURL: assetFolderURL
             )

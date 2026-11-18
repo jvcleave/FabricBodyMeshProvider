@@ -58,7 +58,7 @@ struct CharacterModelSettingsView: View
             }
             .fileImporter(
                 isPresented: $isChoosingArchive,
-                allowedContentTypes: [.folder, UTType(filenameExtension: "messcapture", conformingTo: .package) ?? .package]
+                allowedContentTypes: [UTType(filenameExtension: "bin") ?? .data, .folder, UTType(filenameExtension: "messcapture", conformingTo: .package) ?? .package]
             ) { result in
                 if case let .success(url) = result
                 {
