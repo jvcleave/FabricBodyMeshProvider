@@ -1,6 +1,15 @@
 {
-  "originHash" : "cf31df8849b01e4e62b27d6d338eee1749327b0442aa2252e6e2bae787650576",
+  "originHash" : "38950c5b077024e0e32573eabf1010881707e2be8da4b47272b6d3604d3a7b48",
   "pins" : [
+    {
+      "identity" : "cmcapturekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jvcleave/CMCaptureKit.git",
+      "state" : {
+        "revision" : "14e95630517310b31cb84f382a217e4b96715c32",
+        "version" : "0.1.1"
+      }
+    },
     {
       "identity" : "messusdzimportkit",
       "kind" : "remoteSourceControl",

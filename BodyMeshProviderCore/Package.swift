@@ -13,9 +13,13 @@ let package = Package(
             targets: ["BodyMeshProviderCore"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/jvcleave/CMCaptureKit.git", exact: "0.1.1"),
+    ],
     targets: [
         .target(
-            name: "BodyMeshProviderCore"
+            name: "BodyMeshProviderCore",
+            dependencies: [.product(name: "CMData", package: "CMCaptureKit")]
         ),
         .testTarget(
             name: "BodyMeshProviderCoreTests",

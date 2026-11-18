@@ -12,7 +12,7 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     public override class var name: String { "Body Mesh Character" }
     public override class var nodeType: Node.NodeType { .Object(objectType: .Loader) }
     public override class var nodeTimeMode: Node.TimeMode { .TimeBase }
-    public override class var nodeDescription: String { "Animate the built-in body or a Creator USDZ with CoMotion." }
+    public override class var nodeDescription: String { "Animate the default Human or a mapped Creator USDZ with CoMotion." }
 
     private struct SourceRequest: Sendable
     {
@@ -34,7 +34,6 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
     private var attemptedArchive: FileRequest?
     private lazy var sceneObject = Object(context: context, label: Self.name)
     private var importedCharacter: CharacterModelRenderable?
-    private var builtInCharacter: BuiltInCharacterRenderable?
     private var archive: CoMotionArchiveReader?
     private var usesSharedMotion = false
     private var didReadSharedFrame = false
@@ -171,7 +170,6 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         didPrepareReferencePose = false
         sceneObject.removeAll()
         importedCharacter = nil
-        builtInCharacter = nil
         archive = nil
         try super.stopExecution(renderer: renderer)
     }
@@ -225,19 +223,14 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
                 requestedFrameIndex = selection.frameIndex
                 if selection != lastFrame
                 {
-                    let people: [CoMotionFramePerson]
+                    let people: [CoMotionRigPerson]
                     if let sharedFrame { people = sharedFrame.people }
-                    else if let archive, case let .available(detections) = try archive.frameAtIndex(selection.frameIndex).status
-                    {
-                        people = detections
-                    }
+                    else if let archive { people = try archive.rigPeople(at: selection.frameIndex) }
                     else { people = [] }
-                    let selected = selection.select(people)
+                    let selected = selection.select(people, confidence: \.confidence)
                     detectedBodies = people.count
                     try importedCharacter?.prepare(selected)
-                    try builtInCharacter?.prepare(selected)
-                    let hasCharacter = importedCharacter != nil || builtInCharacter != nil
-                    publishFrame(index: selection.frameIndex, detected: detectedBodies, output: hasCharacter ? selected.count : 0)
+                    publishFrame(index: selection.frameIndex, detected: detectedBodies, output: importedCharacter == nil ? 0 : selected.count)
                     lastFrame = selection
                 }
                 else
@@ -299,7 +292,6 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         lastFrame = nil
         didPrepareReferencePose = false
         importedCharacter?.clear()
-        builtInCharacter?.clear()
     }
 
     private func updateSharedFrame() throws
@@ -325,24 +317,20 @@ public final class BodyMeshCharacterNode: ObjectNode<Object>
         attemptedModel = request
         sceneObject.removeAll()
         importedCharacter = nil
-        builtInCharacter = nil
         lastFrame = nil
         didPrepareReferencePose = false
+        let prepared: CharacterModelRenderable
         if let url = request.url
         {
-            let prepared = try CharacterModelRenderable(context: context, sourceURL: url)
-            guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
-            sceneObject.add(prepared.object)
-            importedCharacter = prepared
+            prepared = try CharacterModelRenderable(context: context, sourceURL: url)
         }
         else
         {
-            let reconstructor = try BodyMeshProviderResources.waitForSource { try BodyMeshProviderResources.meshReconstructor() }
-            let prepared = BuiltInCharacterRenderable(context: context, reconstructor: reconstructor)
-            guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
-            sceneObject.add(prepared.object)
-            builtInCharacter = prepared
+            prepared = try CharacterModelRenderable(context: context, model: BodyMeshProviderResources.defaultHumanModel())
         }
+        guard sourceRequest.withLock({ $0.modelRevision == request.revision }) else { return }
+        sceneObject.add(prepared.object)
+        importedCharacter = prepared
     }
 
     private func loadMotionArchive(_ request: FileRequest) throws

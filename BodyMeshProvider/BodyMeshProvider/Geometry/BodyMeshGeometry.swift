@@ -26,6 +26,7 @@ final class BodyMeshGeometry: SatinGeometry
     private var reconstructionWorkspace = CoMotionMeshReconstructionWorkspace()
     private var blendShapeWorkspace = CoMotionBlendShapeWorkspace()
     private var reusableVertices: [SatinVertex] = []
+    private var defaultHumanTopology: (bodyCount: Int, triangles: [TriangleIndices])?
     private var cachedTrianglesByBodyCount: [Int: [TriangleIndices]] = [:]
     private var preparedGeometryData = createGeometryData()
     private var skinningMesh: CoMotionSkinningMesh?
@@ -37,6 +38,65 @@ final class BodyMeshGeometry: SatinGeometry
     deinit
     {
         freeGeometryData(&preparedGeometryData)
+    }
+
+    /// The geometry port exposes the default Human's deformed positions, normals and UVs.
+    func replaceDefaultHumanBodies(_ people: [CoMotionRigPerson], model: CharacterModelImport) throws
+    {
+        guard !people.isEmpty else
+        {
+            clearMeshes()
+            return
+        }
+        disableSkinning()
+        reusableVertices.removeAll(keepingCapacity: true)
+        let needsTopology = defaultHumanTopology?.bodyCount != people.count
+        var triangles: [TriangleIndices] = []
+        for person in people
+        {
+            let palette = try model.rig.skinningMatrices(person.skinningTransforms)
+            let placement = Self.fabricCoordinates(person.translation)
+            for surface in model.surfaces
+            {
+                let skin = surface.skin
+                let vertexOffset = UInt32(reusableVertices.count)
+                for index in skin.positions.indices
+                {
+                    var position = SIMD4<Float>.zero
+                    var normal = SIMD4<Float>.zero
+                    let start = index * skin.influencesPerVertex
+                    for influence in skin.influences[start ..< start + skin.influencesPerVertex] where influence.weight > 0
+                    {
+                        let joint = palette[Int(influence.joint)]
+                        position += (joint * SIMD4(skin.positions[index], 1)) * influence.weight
+                        normal += (joint * SIMD4(skin.normals[index], 0)) * influence.weight
+                    }
+                    let direction = SIMD3(normal.x, normal.y, normal.z)
+                    reusableVertices.append(SatinVertex(
+                        position: SIMD3(position.x, position.y, position.z) + placement,
+                        normal: simd_length_squared(direction) > 0 ? simd_normalize(direction) : skin.normals[index],
+                        uv: surface.geometry.textureCoordinates?[index] ?? .zero
+                    ))
+                }
+                if needsTopology
+                {
+                    let indices = surface.geometry.triangleIndices
+                    for start in stride(from: 0, to: indices.count, by: 3)
+                    {
+                        triangles.append(TriangleIndices(
+                            i0: indices[start] + vertexOffset,
+                            i1: indices[start + 1] + vertexOffset,
+                            i2: indices[start + 2] + vertexOffset
+                        ))
+                    }
+                }
+            }
+        }
+        if needsTopology { defaultHumanTopology = (people.count, triangles) }
+        let geometryData = try makeGeometryData(triangles: defaultHumanTopology?.triangles ?? [])
+        freeGeometryData(&preparedGeometryData)
+        preparedGeometryData = geometryData
+        _updateData = true
     }
 
     func replaceBodies(
@@ -247,6 +307,7 @@ final class BodyMeshGeometry: SatinGeometry
         skinningMesh = nil
         skinningMatrices.removeAll(keepingCapacity: false)
         reusableVertices.removeAll(keepingCapacity: false)
+        defaultHumanTopology = nil
         cachedTrianglesByBodyCount.removeAll(keepingCapacity: false)
         freeGeometryData(&preparedGeometryData)
         preparedGeometryData = createGeometryData()

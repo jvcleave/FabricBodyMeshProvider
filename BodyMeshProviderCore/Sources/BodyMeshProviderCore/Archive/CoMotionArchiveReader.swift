@@ -1,3 +1,4 @@
+import CMData
 import Foundation
 
 public enum CoMotionArchiveReaderError: LocalizedError, Equatable, Sendable
@@ -8,6 +9,7 @@ public enum CoMotionArchiveReaderError: LocalizedError, Equatable, Sendable
     case invalidFrame(String)
     case invalidPerson(String)
     case frameOutOfRange(Int)
+    case requiresCharacterModel
     case truncated
     case exceedsSizeLimit
 
@@ -27,6 +29,8 @@ public enum CoMotionArchiveReaderError: LocalizedError, Equatable, Sendable
                 return "Invalid CoMotion archive person: \(description)."
             case let .frameOutOfRange(frameIndex):
                 return "CoMotion frame \(frameIndex) is outside the archive."
+            case .requiresCharacterModel:
+                return "Choose a rigged USDZ in Body Mesh Character to play this compact motion archive."
             case .truncated:
                 return "The CoMotion archive is truncated."
             case .exceedsSizeLimit:
@@ -40,12 +44,14 @@ public struct CoMotionArchiveReader: Sendable
     public static let archiveFileName = "frames.bin"
 
     public let metadata: CoMotionArchiveMetadata
+    public let formatVersion: UInt32
     public let frameCount: Int
     public let failedFrameCount: Int
     public let payloadByteCount: Int
 
     private let data: Data
     private let frameOffsets: [Int]
+    private let rigReader: RigMotionArchiveReader?
 
     public var duration: TimeInterval
     {
@@ -79,7 +85,38 @@ public struct CoMotionArchiveReader: Sendable
         {
             throw CoMotionArchiveReaderError.invalidHeader("magic changed")
         }
-        guard try reader.readUInt32() == CoMotionArchiveFormat.formatVersion else
+        let version = try reader.readUInt32()
+        if version == CoMotionArchiveFormat.rigFormatVersion
+        {
+            let archive: RigMotionArchiveReader
+            do
+            {
+                archive = try RigMotionArchiveReader(data)
+            }
+            catch let error as CoMotionArchiveCodecError
+            {
+                switch error
+                {
+                    case let .invalidHeader(message): throw CoMotionArchiveReaderError.invalidHeader(message)
+                    case let .invalidMetadata(message): throw CoMotionArchiveReaderError.invalidMetadata(message)
+                    case let .invalidFrame(message): throw CoMotionArchiveReaderError.invalidFrame(message)
+                    case let .invalidPerson(message): throw CoMotionArchiveReaderError.invalidPerson(message)
+                    case .truncated: throw CoMotionArchiveReaderError.truncated
+                    case .exceedsSizeLimit: throw CoMotionArchiveReaderError.exceedsSizeLimit
+                }
+            }
+            rigReader = archive
+            self.data = Data()
+            frameOffsets = []
+            formatVersion = archive.version
+            metadata = archive.metadata
+            frameCount = archive.count
+            failedFrameCount = archive.failedFrameCount
+            payloadByteCount = data.count
+            return
+        }
+        rigReader = nil
+        guard version == CoMotionArchiveFormat.formatVersion else
         {
             throw CoMotionArchiveReaderError.invalidHeader("format version changed")
         }
@@ -282,6 +319,7 @@ public struct CoMotionArchiveReader: Sendable
         }
 
         self.data = data
+        formatVersion = version
         metadata = CoMotionArchiveMetadata(
             videoSourceID: videoSourceID,
             encodedArtifactGeneration: encodedArtifactGeneration,
@@ -299,8 +337,22 @@ public struct CoMotionArchiveReader: Sendable
         frameOffsets = decodedFrameOffsets
     }
 
+    /// Legacy mesh data can also drive a mapped rig. Compact records never synthesize body shape.
+    public func rigPeople(at frameIndex: Int) throws -> [CoMotionRigPerson]
+    {
+        guard (0 ..< frameCount).contains(frameIndex) else { throw CoMotionArchiveReaderError.frameOutOfRange(frameIndex) }
+        if let rigReader
+        {
+            guard case let .available(people) = try rigReader.frame(at: frameIndex).status else { return [] }
+            return people.map { CoMotionRigPerson(confidence: $0.confidence, skinningTransforms: $0.skinningTransforms, translation: $0.translation) }
+        }
+        guard case let .available(people) = try frameAtIndex(frameIndex).status else { return [] }
+        return people.map(\.rigPerson)
+    }
+
     public func frameAtIndex(_ frameIndex: Int) throws -> CoMotionFrame
     {
+        guard formatVersion == CoMotionArchiveFormat.formatVersion else { throw CoMotionArchiveReaderError.requiresCharacterModel }
         guard frameOffsets.indices.contains(frameIndex) else
         {
             throw CoMotionArchiveReaderError.frameOutOfRange(frameIndex)
@@ -448,15 +500,8 @@ private struct BinaryReader
         {
             throw CoMotionArchiveReaderError.truncated
         }
-        let bytes = Array(data[offset ..< offset + 16])
+        let bytes = data.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: uuid_t.self) }
         offset += 16
-        return UUID(
-            uuid: (
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7],
-                bytes[8], bytes[9], bytes[10], bytes[11],
-                bytes[12], bytes[13], bytes[14], bytes[15]
-            )
-        )
+        return UUID(uuid: bytes)
     }
 }

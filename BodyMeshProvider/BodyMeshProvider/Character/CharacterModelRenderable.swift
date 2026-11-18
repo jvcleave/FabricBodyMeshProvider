@@ -69,13 +69,12 @@ final class CharacterModelRenderable
         setPose([Pose(matrices: rig.referenceMatrices, translation: .zero)])
     }
 
-    func prepare(_ people: [CoMotionFramePerson]) throws
+    func prepare(_ people: [CoMotionRigPerson]) throws
     {
         let poses = try people.map { person in
-            let parameters = person.meshParameters
-            let translation = parameters.translation
+            let translation = person.translation
             return try Pose(
-                matrices: rig.skinningMatrices(parameters.skinningTransforms),
+                matrices: rig.skinningMatrices(person.skinningTransforms),
                 translation: SIMD3(translation[0], -translation[1], -translation[2])
             )
         }

@@ -45,6 +45,17 @@ enum BodyMeshProviderResources
         try meshReconstructorResult.get()
     }
 
+    private static let defaultHumanImport = Task.detached(priority: .userInitiated) {
+        guard let url = Bundle(for: BodyMeshProviderPlugin.self).url(forResource: "DefaultHuman", withExtension: "usdz")
+        else { throw CharacterModelError.resources("The default Human USDZ is missing.") }
+        return try await CharacterModelImport.load(url)
+    }
+
+    static func defaultHumanModel() throws -> CharacterModelImport
+    {
+        try waitForSource { try await defaultHumanImport.value }
+    }
+
     static func resolveFileURL(_ url: URL?, relativeTo directory: URL?) -> URL?
     {
         guard let url, url.scheme == nil, let directory,

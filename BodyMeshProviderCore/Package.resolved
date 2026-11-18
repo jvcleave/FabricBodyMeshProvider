@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "cmcapturekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jvcleave/CMCaptureKit.git",
+      "state" : {
+        "revision" : "14e95630517310b31cb84f382a217e4b96715c32",
+        "version" : "0.1.1"
+      }
+    }
+  ],
+  "version" : 2
+}

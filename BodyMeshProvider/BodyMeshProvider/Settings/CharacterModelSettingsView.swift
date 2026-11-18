@@ -45,7 +45,7 @@ struct CharacterModelSettingsSection: View
     {
         Section("Character Model")
         {
-            Text(modelURL?.lastPathComponent ?? (allowsBuiltIn ? "Built-in" : "No model selected"))
+            Text(modelURL?.lastPathComponent ?? (allowsBuiltIn ? "Default Human" : "No model selected"))
             Button("Choose Character Model", systemImage: "folder")
             {
                 isChoosingModel = true
@@ -53,7 +53,7 @@ struct CharacterModelSettingsSection: View
             if modelURL != nil
             {
                 Button(
-                    allowsBuiltIn ? "Use Built-in" : "Clear Character Model",
+                    allowsBuiltIn ? "Use Default Human" : "Clear Character Model",
                     systemImage: allowsBuiltIn ? "person" : "xmark"
                 )
                 {

@@ -1,7 +1,7 @@
 {
   "requiredPlugins" : [
     {
-      "version" : "1.0",
+      "version" : "2.0",
       "id" : "com.jvclabs.BodyMeshProvider"
     },
     {
@@ -548,8 +548,8 @@
           }
         ],
         "nodeOffset" : [
-          -937.03125,
-          150.109375
+          -225,
+          280
         ],
         "id" : "956F3325-CC89-4043-B7F3-C1FD0A338721"
       }
@@ -863,8 +863,8 @@
           }
         ],
         "nodeOffset" : [
-          -628.8828125,
-          -274.46875
+          0,
+          -117.5
         ],
         "id" : "C4349DBB-D91D-4B87-865C-A2039012DF8B"
       }
@@ -1265,8 +1265,8 @@
           }
         ],
         "nodeOffset" : [
-          -937.86328125,
-          -623.65625
+          0,
+          -440
         ],
         "id" : "52388B79-42FE-45E5-94C9-49FAABF54F7D"
       }
@@ -1399,7 +1399,7 @@
                     "defaultValue" : 1,
                     "value" : 4,
                     "max" : 8,
-                    "description" : "Maximum number of highest-confidence bodies to merge into the geometry",
+                    "description" : "Maximum number of highest-confidence bodies to output",
                     "min" : 1,
                     "label" : "Maximum Bodies",
                     "id" : "4E3F4615-B55F-45E7-9CBF-2182EC5BA449",
@@ -1409,7 +1409,7 @@
                 },
                 "name" : "Maximum Bodies",
                 "published" : false,
-                "portDescription" : "Maximum number of highest-confidence bodies to merge into the geometry"
+                "portDescription" : "Maximum number of highest-confidence bodies to output"
               }
             }
           },
@@ -1583,8 +1583,8 @@
           }
         ],
         "nodeOffset" : [
-          -943.56640625,
-          -287.57421875
+          -225,
+          -130
         ],
         "providerSettings" : {
           "assetFolderURLString" : "947B44F8-C4C3-4666-93B5-73BD71CE231A"
@@ -1828,8 +1828,8 @@
           }
         ],
         "nodeOffset" : [
-          -633.22265625,
-          73.24609375
+          0,
+          142.5
         ],
         "id" : "6CC40ED2-C42A-4A29-9DDD-6F1E3E4B8AC1"
       }
@@ -2258,8 +2258,8 @@
           }
         ],
         "nodeOffset" : [
-          -4637.5,
-          721
+          0,
+          427.5
         ],
         "id" : "B1DD247E-4F96-4E74-838D-2E9181FA5905"
       }

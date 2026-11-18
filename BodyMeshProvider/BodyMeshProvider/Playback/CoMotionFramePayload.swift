@@ -10,31 +10,42 @@ struct CoMotionFramePayload
     let frameCount: Int
     let frameRate: Float
     let sourceSize: SIMD2<Float>
-    let people: [CoMotionFramePerson]
+    let people: [CoMotionRigPerson]
+    let values: Values
 
-    init(frame: CoMotionFrame, archive: CoMotionArchiveReader)
+    init(frameIndex: Int, archive: CoMotionArchiveReader) throws
     {
-        frameIndex = frame.videoFrameOrdinal
+        self.frameIndex = frameIndex
         frameCount = archive.frameCount
         frameRate = archive.metadata.encodedFrameRate
         sourceSize = archive.metadata.sourceSize
-        if case let .available(detections) = frame.status { people = detections }
-        else { people = [] }
-    }
 
-    var values: Values
-    {
-        [
+        var fields: Values = [
             "frameIndex": [Float(frameIndex)],
             "frameCount": [Float(frameCount)],
             "frameRate": [frameRate],
             "sourceSize": [sourceSize.x, sourceSize.y],
-            "confidence": ContiguousArray(people.map(\.confidence)),
-            "betas": ContiguousArray(people.lazy.flatMap(\.meshParameters.betas)),
-            "poseFeatures": ContiguousArray(people.lazy.flatMap(\.meshParameters.poseFeature)),
-            "skinningTransforms": ContiguousArray(people.lazy.flatMap(\.meshParameters.skinningTransforms)),
-            "translations": ContiguousArray(people.lazy.flatMap(\.meshParameters.translation)),
         ]
+        if archive.formatVersion == CoMotionArchiveFormat.rigFormatVersion
+        {
+            people = try archive.rigPeople(at: frameIndex)
+            fields["formatVersion"] = [Float(CoMotionArchiveFormat.rigFormatVersion)]
+        }
+        else
+        {
+            let frame = try archive.frameAtIndex(frameIndex)
+            let detections: [CoMotionFramePerson]
+            if case let .available(framePeople) = frame.status { detections = framePeople }
+            else { detections = [] }
+            people = detections.map(\.rigPerson)
+            // Keep the shape fields that existing v2 graphs receive.
+            fields["betas"] = ContiguousArray(detections.lazy.flatMap(\.meshParameters.betas))
+            fields["poseFeatures"] = ContiguousArray(detections.lazy.flatMap(\.meshParameters.poseFeature))
+        }
+        fields["confidence"] = ContiguousArray(people.map(\.confidence))
+        fields["skinningTransforms"] = ContiguousArray(people.lazy.flatMap(\.skinningTransforms))
+        fields["translations"] = ContiguousArray(people.lazy.flatMap { [$0.translation.x, $0.translation.y, $0.translation.z] })
+        values = fields
     }
 
     init(values: Values) throws
@@ -52,28 +63,42 @@ struct CoMotionFramePayload
               let confidence = values["confidence"],
               confidence.count <= CoMotionArchiveFormat.maximumPeoplePerFrame,
               confidence.allSatisfy({ $0.isFinite && $0 >= 0 && $0 <= 1 }),
-              let betas = values["betas"], betas.count == confidence.count * CoMotionMeshParameters.betaCount,
-              let poseFeatures = values["poseFeatures"],
-              poseFeatures.count == confidence.count * CoMotionMeshParameters.poseFeatureCount,
               let skinningTransforms = values["skinningTransforms"],
               skinningTransforms.count == confidence.count * CoMotionMeshParameters.skinningTransformCount,
+              skinningTransforms.allSatisfy(\.isFinite),
               let translations = values["translations"],
-              translations.count == confidence.count * CoMotionMeshParameters.translationCount
+              translations.count == confidence.count * CoMotionMeshParameters.translationCount,
+              translations.allSatisfy(\.isFinite)
         else { throw BodyMeshProviderResourceError.invalidMotionFrame }
+
+        if let version = values["formatVersion"]
+        {
+            guard version == [Float(CoMotionArchiveFormat.rigFormatVersion)],
+                  values["betas"] == nil, values["poseFeatures"] == nil
+            else { throw BodyMeshProviderResourceError.invalidMotionFrame }
+        }
+        else
+        {
+            guard let betas = values["betas"], betas.count == confidence.count * CoMotionMeshParameters.betaCount,
+                  betas.allSatisfy(\.isFinite),
+                  let poseFeatures = values["poseFeatures"], poseFeatures.count == confidence.count * CoMotionMeshParameters.poseFeatureCount,
+                  poseFeatures.allSatisfy(\.isFinite)
+            else { throw BodyMeshProviderResourceError.invalidMotionFrame }
+        }
 
         frameIndex = index
         frameCount = count
         frameRate = rate
         sourceSize = SIMD2(dimensions[0], dimensions[1])
-        people = try confidence.enumerated().map { personIndex, confidence in
-            let parameters = try CoMotionMeshParameters(
-                betas: Self.personValues(betas, count: CoMotionMeshParameters.betaCount, index: personIndex),
-                poseFeature: Self.personValues(poseFeatures, count: CoMotionMeshParameters.poseFeatureCount, index: personIndex),
+        people = confidence.enumerated().map { personIndex, confidence in
+            let translationOffset = personIndex * CoMotionMeshParameters.translationCount
+            return CoMotionRigPerson(
+                confidence: confidence,
                 skinningTransforms: Self.personValues(skinningTransforms, count: CoMotionMeshParameters.skinningTransformCount, index: personIndex),
-                translation: Self.personValues(translations, count: CoMotionMeshParameters.translationCount, index: personIndex)
+                translation: SIMD3(translations[translationOffset], translations[translationOffset + 1], translations[translationOffset + 2])
             )
-            return CoMotionFramePerson(confidence: confidence, meshParameters: parameters)
         }
+        self.values = values
     }
 
     private static func scalar(_ name: String, in values: Values) -> Float?

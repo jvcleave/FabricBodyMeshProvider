@@ -40,13 +40,13 @@ struct BodyMeshFrameSelection: Equatable
         return archive.frameIndex(time: time, loop: inputLoop.value ?? true)
     }
 
-    func select(_ people: [CoMotionFramePerson]) -> [CoMotionFramePerson]
+    func select<Person>(_ people: [Person], confidence: KeyPath<Person, Float>) -> [Person]
     {
         people.enumerated()
-            .filter { $0.element.confidence > confidenceThreshold }
+            .filter { $0.element[keyPath: confidence] > confidenceThreshold }
             .sorted { first, second in
-                if first.element.confidence == second.element.confidence { return first.offset < second.offset }
-                return first.element.confidence > second.element.confidence
+                if first.element[keyPath: confidence] == second.element[keyPath: confidence] { return first.offset < second.offset }
+                return first.element[keyPath: confidence] > second.element[keyPath: confidence]
             }
             .prefix(maximumBodyCount)
             .map(\.element)

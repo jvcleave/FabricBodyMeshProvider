@@ -49,7 +49,7 @@ struct BodyMeshProviderSettingsView: View
                         .foregroundStyle(.red)
                 }
 
-                Text("Choose a folder produced by CMResearchKit that contains frames.bin. If asset.json is present, the plug-in validates it against the archive.")
+                Text("Choose a folder containing CoMotion frames.bin. If asset.json is present, the plug-in validates it against the archive.")
                     .foregroundStyle(.secondary)
             }
 

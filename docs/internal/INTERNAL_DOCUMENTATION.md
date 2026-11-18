@@ -20,6 +20,8 @@ See [SampleData](../../SampleData/README.md) for local test archives.
 
 ## Handoffs
 
+- [Compact rig motion](handoffs/compact-rig-motion.md) records v2/v3 reader and Editor rendering verification.
+
 Keep substantial Body Mesh Provider checkpoints in
 `docs/internal/handoffs/<task-slug>.md`. Record the affected revisions, the
 latest verification result, and the next exact action.

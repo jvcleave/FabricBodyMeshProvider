@@ -140,7 +140,7 @@ public final class BodyMeshSceneViewNode: ObjectNode<Object>
                 let selection = BodyMeshFrameSelection(node: self, frameIndex: motionFrame.frameIndex)
                 if lastSelection != selection
                 {
-                    try activeModel.prepare(selection.select(motionFrame.people))
+                    try activeModel.prepare(selection.select(motionFrame.people, confidence: \.confidence))
                     lastSelection = selection
                 }
                 try activeModel.encode(commandBuffer: commandBuffer)

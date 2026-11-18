@@ -159,7 +159,7 @@ public struct CoMotionCharacterRig: Sendable
         )
     }
 
-    private static func isRigid(_ matrix: simd_float4x4, tolerance: Float) -> Bool
+    static func isRigid(_ matrix: simd_float4x4, tolerance: Float) -> Bool
     {
         let basis = rotation(matrix)
         let gram = basis.transpose * basis

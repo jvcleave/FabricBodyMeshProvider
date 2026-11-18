@@ -156,9 +156,9 @@ public final class CoMotionDataNode: Node
             let index = BodyMeshFrameSelection.resolveFrameIndex(node: self, graphTime: executionInfo.timing.time, archive: archive)
             guard lastFrameIndex != index else { return }
             lastFrameIndex = index
-            let frame = try archive.frameAtIndex(index)
+            let frame = try CoMotionFramePayload(frameIndex: index, archive: archive)
             guard sourceRequest.withLock({ $0.revision == request.revision }) else { return }
-            outputCoMotionFrame.send(CoMotionFramePayload(frame: frame, archive: archive).values)
+            outputCoMotionFrame.send(frame.values)
         }
         catch
         {

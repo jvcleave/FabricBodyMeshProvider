@@ -24,10 +24,10 @@ for its model and motion archive.
 
 ## Body Mesh Provider
 
-**Body Mesh Provider** is a time-based geometry node that reads a prepared
-body-mesh asset folder created by the generator app. Select the folder—not its
-individual `frames.bin` file—from the node's Settings panel. Choosing a folder
-loads it on the next graph frame, even if it is already selected. The panel
+**Body Mesh Provider** is a time-based geometry node that reads v2 or v3
+CoMotion archives. Select the folder containing `frames.bin` in the node's
+Settings panel. Choosing a folder loads it on the next graph frame, even if it
+is already selected. The panel
 reports compatibility, native frame rate, frame count, duration, and any
 loading error.
 
@@ -41,8 +41,12 @@ limit how many of the highest-confidence people are included. Selected bodies
 are combined into one geometry; the archive does not provide stable person
 identities across frames.
 
-Body Mesh Provider uses GPU skinning automatically. The CPU calculates CoMotion's
-shape and pose corrections, and Satin's vertex shaders apply joint transforms
+Compact Creator v3 archives pose the bundled Default Human and publish its
+deformed positions, normals, and UVs to the Geometry port.
+
+For full CoMotion v2 archives, Body Mesh Provider uses GPU skinning
+automatically. The CPU calculates CoMotion's shape and pose corrections, and
+Satin's vertex shaders apply joint transforms
 when drawing the mesh. Use a material that supports Satin skinning. A CPU reader
 of the geometry sees positions before joint transforms on the GPU path. Frames
 with projective joint transforms use CPU reconstruction for the per-vertex
@@ -75,14 +79,23 @@ Camera when source-matched framing is desired.
 
 ## Body Mesh Character
 
-Add **Body Mesh Character** from Fabric's Loader group. The **Built-in** model
-uses the same body reconstruction as the geometry provider. In Settings,
-**Choose Character Model** opens a mapped Creator `.usdz` and **Use Built-in**
-switches back to the built-in body. **Choose Motion Archive** accepts a CoMotion
-v2 `.bin` file, a Creator `.messcapture`, or a generator folder containing
-`frames.bin`. Use **Time**, **Loop**, and **Playback Rate** for local archive
-playback. An imported model uses its reference pose when both motion sources
-are unset. Each selected detection draws with its own pose and root translation.
+Add **Body Mesh Character** from Fabric's Loader group. It opens with Creator's
+neutral rigged USDZ. **Choose Character Model** selects a mapped Creator USDZ
+and **Use Default Human** restores the bundled model. **Choose Motion Archive**
+accepts a `frames.bin` file, a Creator `.messcapture`, or a folder containing the
+archive. Use **Time**, **Loop**, and **Playback Rate** for local archive playback.
+The character shows its reference pose when both motion sources are unset.
+Each selected detection draws with its own pose and camera translation.
+
+| Motion archive | Body Mesh Character | Body Mesh Provider geometry |
+| --- | --- | --- |
+| Compact v3 from Creator or MESS | Default Human or a selected mapped USDZ | Posed Default Human |
+| Full CoMotion v2 | Default Human or a selected mapped USDZ with the recorded rigid poses | Reconstructed shape and pose from the recording |
+
+CMData from CMCaptureKit validates and indexes compact v3 archives. The plug-in
+reads full v2 records locally to retain recorded shape and projective transforms.
+Default Human uses the MakeHuman Community's MPFB base mesh and GameEngine rig
+assets. [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
 
 Imported textures respond to Satin lighting. Character surfaces use the
 authored alpha cutoff in both the visible image and the shadow map.
@@ -92,8 +105,8 @@ Camera** for source-matched framing. The model and archive choices are saved
 independently for graph reopen and movie export.
 
 The plug-in build requires Apple silicon, macOS 15.6 or newer, an Xcode
-toolchain with Swift 6.2 or newer, and read access to the private
-[MessUSDZImportKit repository](https://github.com/jvcleave/MessUSDZImportKIt).
+toolchain with Swift 6.2 or newer, and read access to two private dependencies.
+[MessUSDZImportKit](https://github.com/jvcleave/MessUSDZImportKIt) · [CMCaptureKit](https://github.com/jvcleave/CMCaptureKit)
 Xcode embeds the OpenUSD and TBB frameworks and the USD schema resources in
 the plug-in. [USDZ update plan](docs/internal/todos/USDZ_CHARACTER_MODEL_UPDATE_PLAN.md)
 
@@ -123,7 +136,7 @@ the plug-in. [USDZ update plan](docs/internal/todos/USDZ_CHARACTER_MODEL_UPDATE_
 
 ## CoMotion Data
 
-Add **CoMotion Data** from Utility. Choose a CoMotion v2 `.bin` file, a Creator
+Add **CoMotion Data** from Utility. Choose a v2 or v3 `.bin` file, a Creator
 `.messcapture`, or a prepared folder containing `frames.bin`. Use **Time**,
 **Loop**, and **Playback Rate** to control the archive.
 
@@ -380,7 +393,7 @@ USDZs and `motiondata.bin`.
 ### Character sample
 
 Open [Character-sample.fabric](FabricScenes/Character-sample.fabric). It
-connects **Source Size** to **Body Mesh Intrinsic Camera** and uses **Built-in**
+connects **Source Size** to **Body Mesh Intrinsic Camera** and uses **Default Human**
 with the included [24sectest archive](FabricScenes/947B44F8-C4C3-4666-93B5-73BD71CE231A).
 The checked-in scene references that archive folder relative to the graph.
 Keep the graph beside the archive folder when moving the sample. In the node's

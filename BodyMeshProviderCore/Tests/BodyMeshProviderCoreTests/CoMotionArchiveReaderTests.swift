@@ -35,6 +35,46 @@ final class CoMotionArchiveReaderTests: XCTestCase
         XCTAssertEqual(failedFrame.status, .failed(.prediction))
     }
 
+    func testCompactRigRecordsKeepRootAndCameraTranslationsSeparate() throws
+    {
+        var data = try makeArchiveData()
+        var person = Data()
+        appendFloat(0.75, to: &person)
+        for _ in 0 ..< 24
+        {
+            for value: Float in [0, -1, 0, 1, 0, 0, 0, 0, 1] { appendFloat(value, to: &person) }
+        }
+        for value: Float in [4, 5, 6, 1, 2, 3] { appendFloat(value, to: &person) }
+        XCTAssertEqual(person.count, 892)
+        data.replaceSubrange(172 ..< 172 + 2420, with: person)
+        replaceUInt32(3, at: 4, in: &data)
+        replaceUInt32(2, at: 12, in: &data)
+        replaceUInt32(2, at: 80, in: &data)
+        replaceUInt64(UInt64(person.count), at: 164, in: &data)
+        replaceUInt64(UInt64(172 + person.count), at: 136, in: &data)
+
+        let reader = try CoMotionArchiveReader(data: data)
+        XCTAssertEqual(reader.formatVersion, 3)
+        XCTAssertEqual(reader.failedFrameCount, 1)
+        XCTAssertTrue(try reader.rigPeople(at: 1).isEmpty)
+        let detection = try XCTUnwrap(reader.rigPeople(at: 0).first)
+        XCTAssertEqual(detection.confidence, 0.75)
+        XCTAssertEqual(detection.translation, SIMD3(1, 2, 3))
+        XCTAssertEqual(Array(detection.skinningTransforms.prefix(16)), [0,-1,0,4,1,0,0,5,0,0,1,6,0,0,0,1])
+        XCTAssertEqual(Array(detection.skinningTransforms.suffix(16)), [0,-1,0,0,1,0,0,0,0,0,1,0,0,0,0,1])
+        XCTAssertThrowsError(try reader.frameAtIndex(0)) { error in
+            XCTAssertEqual(error as? CoMotionArchiveReaderError, .requiresCharacterModel)
+        }
+        XCTAssertThrowsError(try reader.rigPeople(at: 2))
+        for (offset, value) in [(176, Float(2)), (172 + 888, Float.nan)]
+        {
+            var invalid = data
+            replaceUInt32(value.bitPattern, at: offset, in: &invalid)
+            XCTAssertThrowsError(try CoMotionArchiveReader(data: invalid))
+        }
+        XCTAssertThrowsError(try CoMotionArchiveReader(data: data.dropLast()))
+    }
+
     func testResolvesLoopedAndClampedFrameIndexes() throws
     {
         let archiveReader = try CoMotionArchiveReader(data: makeArchiveData())

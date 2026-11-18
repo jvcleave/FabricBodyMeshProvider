@@ -25,7 +25,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     public override class var name: String { "Body Mesh Provider" }
     public override class var nodeDescription: String
     {
-        "Loads a CMResearchKit body-mesh asset and provides its animated geometry."
+        "Loads a CoMotion body-mesh archive and provides its animated geometry."
     }
     public override class var nodeTimeMode: Node.TimeMode { .TimeBase }
 
@@ -43,6 +43,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     }
 
     private var archiveReader: CoMotionArchiveReader?
+    private var defaultHuman: CharacterModelImport?
     private var attemptedAssetSource: AssetSource?
     private var assetLoadError: (any Error)?
     private var lastEvaluationKey: BodyMeshFrameSelection?
@@ -194,32 +195,40 @@ public final class BodyMeshProviderNode: BaseGeometryNode
                 return
             }
 
-            let frame = try archiveReader.frameAtIndex(frameIndex)
-            let people: [CoMotionFramePerson]
-            switch frame.status
+            let detectedCount: Int
+            let outputCount: Int
+            if let defaultHuman
             {
-                case let .available(framePeople):
-                    people = framePeople
-                case .failed:
-                    people = []
-            }
-
-            let selectedPeople = evaluationKey.select(people)
-
-            if selectedPeople.isEmpty
-            {
-                bodyMeshGeometry.clearMeshes()
+                let people = try archiveReader.rigPeople(at: frameIndex)
+                let selected = evaluationKey.select(people, confidence: \.confidence)
+                detectedCount = people.count
+                outputCount = selected.count
+                try bodyMeshGeometry.replaceDefaultHumanBodies(selected, model: defaultHuman)
             }
             else
             {
-                let reconstructor = try BodyMeshProviderResources.meshReconstructor()
-                try bodyMeshGeometry.replaceBodies(selectedPeople, reconstructor: reconstructor)
+                let frame = try archiveReader.frameAtIndex(frameIndex)
+                let people: [CoMotionFramePerson]
+                if case let .available(detections) = frame.status { people = detections }
+                else { people = [] }
+                let selected = evaluationKey.select(people, confidence: \.confidence)
+                detectedCount = people.count
+                outputCount = selected.count
+                if selected.isEmpty
+                {
+                    bodyMeshGeometry.clearMeshes()
+                }
+                else
+                {
+                    let reconstructor = try BodyMeshProviderResources.meshReconstructor()
+                    try bodyMeshGeometry.replaceBodies(selected, reconstructor: reconstructor)
+                }
             }
 
-            outputDetectedBodies.send(people.count)
-            outputBodies.send(selectedPeople.count)
+            outputDetectedBodies.send(detectedCount)
+            outputBodies.send(outputCount)
             outputCurrentFrame.send(frameIndex)
-            outputFrameAvailable.send(selectedPeople.isEmpty == false)
+            outputFrameAvailable.send(outputCount > 0)
             lastEvaluationKey = evaluationKey
             hasPublishedGeometry = true
             if runtimeStatus.errorMessage != nil
@@ -283,6 +292,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
         }
 
         archiveReader = nil
+        defaultHuman = nil
         assetLoadError = nil
         lastEvaluationKey = nil
         hasPublishedGeometry = false
@@ -309,6 +319,10 @@ public final class BodyMeshProviderNode: BaseGeometryNode
             )
             try descriptor?.validate(archiveReader: newArchiveReader)
 
+            if newArchiveReader.formatVersion == CoMotionArchiveFormat.rigFormatVersion
+            {
+                defaultHuman = try BodyMeshProviderResources.defaultHumanModel()
+            }
             archiveReader = newArchiveReader
             outputFrameRate.send(newArchiveReader.metadata.encodedFrameRate)
             outputFrameCount.send(newArchiveReader.frameCount)
@@ -356,6 +370,7 @@ public final class BodyMeshProviderNode: BaseGeometryNode
     private func invalidateLoadedAsset()
     {
         archiveReader = nil
+        defaultHuman = nil
         attemptedAssetSource = nil
         assetLoadError = nil
         lastEvaluationKey = nil

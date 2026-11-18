@@ -1,8 +1,10 @@
+import CMData
 import Foundation
 
 public enum CoMotionArchiveFormat
 {
     public static let formatVersion: UInt32 = 2
+    public static let rigFormatVersion = RigMotionArchiveCodec.version
     public static let meshSchemaVersion: UInt32 = 1
     public static let modelCompatibilityVersion: UInt32 = 2
     public static let smplCompatibilityVersion: UInt32 = 1
@@ -20,52 +22,29 @@ public enum CoMotionArchiveFormat
     static let personRecordByteCount = (1 + CoMotionMeshParameters.totalFloatCount) * 4
 }
 
-public struct CoMotionArchiveMetadata: Equatable, Sendable
-{
-    public let videoSourceID: UUID
-    public let encodedArtifactGeneration: UUID
-    public let encodedWidth: Int
-    public let encodedHeight: Int
-    public let encodedFrameRate: Float
-    public let resizingModeIdentifier: UInt64
-    public let frameRateConversionModeIdentifier: UInt64
-    public let modelCompatibilityVersion: UInt32
-    public let smplCompatibilityVersion: UInt32
+public typealias CoMotionArchiveMetadata = CMData.CoMotionArchiveMetadata
+public typealias CoMotionFrameFailureCode = CMData.CoMotionFrameFailureCode
 
+extension CMData.CoMotionArchiveMetadata
+{
     public var sourceSize: SIMD2<Float>
     {
         SIMD2(Float(encodedWidth), Float(encodedHeight))
     }
-
-    public init(
-        videoSourceID: UUID,
-        encodedArtifactGeneration: UUID,
-        encodedWidth: Int,
-        encodedHeight: Int,
-        encodedFrameRate: Float,
-        resizingModeIdentifier: UInt64,
-        frameRateConversionModeIdentifier: UInt64,
-        modelCompatibilityVersion: UInt32,
-        smplCompatibilityVersion: UInt32
-    )
-    {
-        self.videoSourceID = videoSourceID
-        self.encodedArtifactGeneration = encodedArtifactGeneration
-        self.encodedWidth = encodedWidth
-        self.encodedHeight = encodedHeight
-        self.encodedFrameRate = encodedFrameRate
-        self.resizingModeIdentifier = resizingModeIdentifier
-        self.frameRateConversionModeIdentifier = frameRateConversionModeIdentifier
-        self.modelCompatibilityVersion = modelCompatibilityVersion
-        self.smplCompatibilityVersion = smplCompatibilityVersion
-    }
 }
 
-public enum CoMotionFrameFailureCode: UInt32, Equatable, Sendable
+public struct CoMotionRigPerson: Sendable
 {
-    case videoDecode = 1
-    case prediction = 2
-    case invalidPredictionOutput = 3
+    public let confidence: Float
+    public let skinningTransforms: [Float]
+    public let translation: SIMD3<Float>
+
+    public init(confidence: Float, skinningTransforms: [Float], translation: SIMD3<Float>)
+    {
+        self.confidence = confidence
+        self.skinningTransforms = skinningTransforms
+        self.translation = translation
+    }
 }
 
 public struct CoMotionFramePerson: Equatable, Sendable
@@ -77,6 +56,16 @@ public struct CoMotionFramePerson: Equatable, Sendable
     {
         self.confidence = confidence
         self.meshParameters = meshParameters
+    }
+
+    public var rigPerson: CoMotionRigPerson
+    {
+        let translation = meshParameters.translation
+        return CoMotionRigPerson(
+            confidence: confidence,
+            skinningTransforms: meshParameters.skinningTransforms,
+            translation: SIMD3(translation[0], translation[1], translation[2])
+        )
     }
 }
 

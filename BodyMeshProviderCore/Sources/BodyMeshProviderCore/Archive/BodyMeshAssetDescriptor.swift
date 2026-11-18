@@ -19,7 +19,7 @@ public enum BodyMeshAssetDescriptorError: LocalizedError, Equatable, Sendable
 
 public struct BodyMeshAssetDescriptor: Codable, Equatable, Sendable
 {
-    public static let currentVersion = 1
+    public static let currentVersion = 2
     public static let fileName = "asset.json"
     public static let payloadFileName = "frames.bin"
 
@@ -61,7 +61,8 @@ public struct BodyMeshAssetDescriptor: Codable, Equatable, Sendable
     public func validate(archiveReader: CoMotionArchiveReader) throws
     {
         let metadata = archiveReader.metadata
-        guard width == metadata.encodedWidth,
+        guard payloadFormatVersion == archiveReader.formatVersion,
+              width == metadata.encodedWidth,
               height == metadata.encodedHeight,
               frameRate == metadata.encodedFrameRate,
               frameCount == archiveReader.frameCount,
@@ -81,7 +82,7 @@ public struct BodyMeshAssetDescriptor: Codable, Equatable, Sendable
 
     private func validateSupportedValues() throws
     {
-        guard descriptorVersion == Self.currentVersion else
+        guard (1 ... Self.currentVersion).contains(descriptorVersion) else
         {
             throw BodyMeshAssetDescriptorError.unsupported(
                 "descriptor version \(descriptorVersion)"
@@ -101,8 +102,8 @@ public struct BodyMeshAssetDescriptor: Codable, Equatable, Sendable
                 "payload file \(payloadFileName)"
             )
         }
-        guard payloadFormatVersion == CoMotionArchiveFormat.formatVersion,
-              meshSchemaVersion == CoMotionArchiveFormat.meshSchemaVersion,
+        guard ((payloadFormatVersion == CoMotionArchiveFormat.formatVersion && meshSchemaVersion == CoMotionArchiveFormat.meshSchemaVersion)
+                || (payloadFormatVersion == CoMotionArchiveFormat.rigFormatVersion && meshSchemaVersion == 2)),
               modelCompatibilityVersion == CoMotionArchiveFormat.modelCompatibilityVersion,
               smplCompatibilityVersion == CoMotionArchiveFormat.smplCompatibilityVersion
         else
