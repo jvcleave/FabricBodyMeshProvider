@@ -453,7 +453,7 @@
 			repositoryURL = "https://github.com/jvcleave/MessUSDZImportKIt.git";
 			requirement = {
 				kind = revision;
-				revision = dfd0042a5b9af398afa87526a0ddd251ea410811;
+				revision = bd7649db602c78ca91a4391bfd76f36ec58752a7;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
